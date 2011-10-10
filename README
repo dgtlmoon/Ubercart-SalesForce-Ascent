@@ -1,0 +1,7 @@
+This is initial code for integrating SalesForce Ascent enhanced services with Ubercart
+
+It has a very different API to the regular Salesforce API so that's why this code is not based
+on the existing Ubercart modules.
+
+dgtlmoon@gmail.com
+October 2011/Berlin

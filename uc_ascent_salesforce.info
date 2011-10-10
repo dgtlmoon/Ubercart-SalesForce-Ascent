@@ -1,0 +1,5 @@
+name = Conditional Actions for Ubercart integration to salesforce (Ascent)
+description = Provides conditional actions (CA) to update salesforce (Ascent) from Ubercart
+package = Salesforce
+core = 6.x
+version = "6.x-0.2"

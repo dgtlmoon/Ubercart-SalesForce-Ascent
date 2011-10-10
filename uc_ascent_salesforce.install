@@ -1,0 +1,109 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the uc_ascent_salesforce module
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function uc_ascent_salesforce_schema() {
+
+  $schema = array();
+
+  $schema['uc_sf_queue'] = array(
+    'description' => 'Stores a Queue of runnable jobs to execute against SalesForce/Ascent via the API',
+    'fields' => array(
+      'qid' => array(
+        'description' => 'The Queue ID',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'queue_function' => array(
+        'description' => 'The function to run',
+        'type' => 'varchar',
+        'length' => 20,
+        'default' => NULL,
+      ),
+      'order_id' => array(
+        'description' => 'The Ubercart OrderID',
+        'type' => 'int',
+      ),
+      'request_recent_time' => array(
+        'description' => 'Last time this job was run',
+        'type' => 'int',
+      ),
+     'q_status' => array(
+        'description' => 'Status of this queue entry, 0 is unprocessed',
+        'type' => 'int',
+        'default' => 0,
+      ),
+      
+    ),
+    'primary key' => array('qid'),
+  );
+
+  $schema['uc_sf_queue_log'] = array(
+    'description' => 'Stores the Send/Receive log of data sent to SalesForce/Ascent',
+    'fields' => array(
+      'id' => array(
+        'description' => 'The Queue ID',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'qid' => array(
+        'description' => 'The Queue ID',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'request_start_time' => array(
+        'description' => 'Last time this was requested',
+        'type' => 'int',
+      ),
+      'request_end_time' => array(
+        'description' => 'Last time the reply was received',
+        'type' => 'int',
+      ),
+      'request_post' => array(
+        'description' => 'XML text of the request/post',
+        'type' => 'text',
+      ),
+      'request_reply' => array(
+        'description' => 'XML text of the response/reply',
+        'type' => 'text',
+      ),
+      'result_status' => array(
+        'description' => 'Success status',
+        'type' => 'int',
+      ),
+      'sf_contact_id' => array(
+        'description' => 'Contact ID of this order contact on salesforce',
+        'type' => 'varchar',
+        'length' => 30,
+      ),
+       
+    ),
+    'primary key' => array('id'),
+  );
+
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function uc_ascent_salesforce_install() {
+  drupal_install_schema('uc_ascent_salesforce');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function uc_ascent_salesforce_uninstall() {
+  drupal_uninstall_schema('uc_ascent_salesforce');
+}
+
