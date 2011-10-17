@@ -782,6 +782,7 @@ class SforceBaseClient {
 		$QueryResult = $this->sforce->query(array (
 					  'queryString' => $query
 		))->result;
+		
 		return new QueryResult($QueryResult);
 	}
 

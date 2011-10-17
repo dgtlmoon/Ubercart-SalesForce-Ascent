@@ -259,13 +259,18 @@ class AscentSFClient extends SforceBaseClient {
     
     
     try {
-    	$sObject = new SoapVar($sObject, SOAP_ENC_OBJECT, $type, $this->namespace);
-      $result = $this->ascent->addSO($arg->AccountName, $arg->Contact, $arg->shippingInstructions, $arg->ShippingCost, $arg->salesTax, $arg->discount);
+
+    	$values = array('AccountName'=> $arg->AccountName,
+    	         'Contact' => $arg->AccountName,
+    	'shippingInstructions'=>"",
+    	'shippingCost'=>0.00,
+    	'salesTax' => 0.00,
+    	'discount' => 0.00
+    	);
+    	
+      $result = $this->ascent->addSO($values);
+            
     } catch (SoapFault $fault) {
-    	$res= $this->ascent->__getLastResponse();
-    	$req = $this->ascent->__getLastRequest();
-    	print $fault;
-    	print $req;
     	return false;
     }
     
