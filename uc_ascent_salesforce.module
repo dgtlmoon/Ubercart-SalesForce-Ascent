@@ -114,7 +114,13 @@ function uc_ascent_salesforce_cron() {
 function uc_ascent_salesforce_process_jobs($sf, $parent =0 ) {
 
 	// run each order
-  $db_result = db_query("SELECT qid, queue_function, order_id, extra_data, parent_qid FROM {uc_sf_queue} WHERE q_status = 0 AND parent_qid = %d ORDER BY qid", $parent);  
+	// if a parent is specified use that, else just process as usual
+	if($parent) {
+    $db_result = db_query("SELECT qid, queue_function, order_id, extra_data, parent_qid FROM {uc_sf_queue} WHERE q_status = 0 AND parent_qid = %d ORDER BY qid", $parent);
+	} else {
+		$db_result = db_query("SELECT qid, queue_function, order_id, extra_data, parent_qid FROM {uc_sf_queue} WHERE q_status = 0 ORDER BY qid");
+	}
+	   
   while( $row = db_fetch_array($db_result)) {
     $order = uc_order_load($row['order_id']);
     $time_start = time();

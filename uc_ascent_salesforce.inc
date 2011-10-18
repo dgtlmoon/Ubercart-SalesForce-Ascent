@@ -292,8 +292,8 @@ class AscentSFClient extends SforceBaseClient {
     	                'Contact' => $accountName,
 								    	'shippingInstructions' => "",
 								    	'shippingCost' => $shippingCost,
-								    	'salesTax' => 0.00,
-								    	'discount' => 0.00
+								    	'salesTax' => 0.00, // @todo what is salestax based on?
+								    	'discount' => 0.00  // @todo integrate with vouchers?
     	);
     	
       $result = $this->ascent->addSO($values);
