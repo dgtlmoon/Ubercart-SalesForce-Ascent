@@ -4,6 +4,7 @@ It has a very different API to the regular Salesforce API so that's why this cod
 on the existing Ubercart modules.
 
 Usage:
+* Add your correct WSDL's for your organisation to resources/
 
 * Configure the actions at admin/store/ca/add
   - Step 1.
@@ -23,5 +24,5 @@ Usage:
     
 * Configure your API key information admin/store/settings/uc_salesforce
 
-dgtlmoon@gmail.com
+Leigh Morresi dgtlmoon@gmail.com
 October 2011/Berlin
