@@ -3,5 +3,25 @@ This is initial code for integrating SalesForce Ascent enhanced services with Ub
 It has a very different API to the regular Salesforce API so that's why this code is not based
 on the existing Ubercart modules.
 
+Usage:
+
+* Configure the actions at admin/store/ca/add
+  - Step 1.
+      Title - "Synchronise order account with salesforce"
+      Trigger - "Customer completes checkout"
+      Weight - 0 (IMPORTANT!)
+      [Save with no conditions]
+      Actions - "Queue salesforce<->ubercart account upsert"
+  - Step 2 (setup adding the account to Ascent)
+      goto admin/store/ca/add
+      Title - "Synchronise product sales with ascent"
+      Trigger - "Customer completes checkout"
+      Weight - 2 (IMPORTANT!)    
+      [Save with no conditions]
+      Actions - "Queue salesforce<->ubercart sales order upsert"
+    
+    
+* Configure your API key information admin/store/settings/uc_salesforce
+
 dgtlmoon@gmail.com
 October 2011/Berlin
