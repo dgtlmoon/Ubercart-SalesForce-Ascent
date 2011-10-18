@@ -1,5 +1,21 @@
 <?php 
 
+/**
+ * Registers the order line item with salesforce
+ * @param salesforce interface $sf
+ * @param object of each order product from $order $order_product
+ */
+function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_product) {
+	//addSOLine(string soName,string itemName,double price, double quantity,double discount)
+	
+	$discount = 0.00; //@todo integrate discounts when vouchers are in use
+	if ($result =$sf->addSalesOrderLineItem($soName, $order_product->model, $order_product->price, $order_product->qty, $discount ) ) {
+    return $result;
+  }
+       
+  return false;
+}
+
 
 function _uc_ascent_salesforce_salesforce_enter($sf, $order = false, $sf_contact_id) {
 
@@ -8,10 +24,12 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order = false, $sf_contact
 	$shippingInstructions = "";
 	$shippingCost = _uc_ascent_get_order_total($order->order_id);
   $salesTax = 0; // @todo unsure
-  $discount = 0; // @todo integrate with vouchers	
+  $discount = 0; // @todo integrate with vouchers when that is complete	
 
-  $result =$sf->addSalesOrder($accountName, $contactName, $shippingInstructions, $shippingCost, $salesTax, $discount ); 		
-
+  if ($result =$sf->addSalesOrder($accountName, $contactName, $shippingInstructions, $shippingCost, $salesTax, $discount ) ) {
+  	return $result;
+  } 		
+  return false;
 }
 
 function _uc_ascent_get_order_total($order_id) {
@@ -77,9 +95,9 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
      );
      
       $response = $sf->create(array($record), 'Contact');
-      $id = $response[0]->Id;
+      $id = $response[0]->id;       // hows that for annoying, this "id"
 	} else {
-		$id = $result->records[0]->Id;
+		$id = $result->records[0]->Id;  // and this is "Id"
 	}
 	
   return $id;
@@ -230,6 +248,30 @@ class AscentSFClient extends SforceBaseClient {
     return parent::_merge($arg);
   }
   
+  // global id addSOLine(string soName,string itemName,double price, double quantity,double discount)
+  
+  public function addSalesOrderLineItem($soName, $itemName, $price, $quantity, $discount) {
+  	$this->_setSessionHeader($this->ascent);    
+
+  	try {
+
+      $values = array('soName'=> $soName,
+                      'itemName' => $itemName,
+                      'price' => $price, //@todo each is it?
+                      'quantity' => $quantity,
+                      'discount' => $discount,
+      );
+      
+      $result = $this->ascent->addSOLine($values);
+            
+    } catch (SoapFault $fault) {
+      throw new SoapFault($fault);
+    }
+    
+    return $result->result;
+  }
+  
+  
   /**
    * add a SalesOrder to Ascent API
    * 
@@ -241,37 +283,23 @@ class AscentSFClient extends SforceBaseClient {
    *                  double discount) 
    */   
   public function addSalesOrder($accountName, $contactName, $shippingInstructions, $shippingCost, $salesTax, $discount ) {
-
-  	$arg = new stdClass;
-    $arg->AccountName = $accountName;
-    $arg->Contact = $contactName;
-    $arg->shippingInstructions = $shippingInstructions;
-    $arg->ShippingCost = $shippingCost;
-    $arg->salesTax = $salesTax;
-    $arg->discount = $discount;
-    
-    return $this->_addSO($arg);	
-  }
-  
-  protected function _addSO($arg) {
-    //$this->setHeaders("update"); // should be addSO but for compatibility we leave it as this
-    $this->_setSessionHeader($this->ascent);
-    
+  	
+    $this->_setSessionHeader($this->ascent);    
     
     try {
 
-    	$values = array('AccountName'=> $arg->AccountName,
-    	         'Contact' => $arg->AccountName,
-    	'shippingInstructions'=>"",
-    	'shippingCost'=>0.00,
-    	'salesTax' => 0.00,
-    	'discount' => 0.00
+    	$values = array('AccountName'=> $accountName,
+    	                'Contact' => $accountName,
+								    	'shippingInstructions' => "",
+								    	'shippingCost' => $shippingCost,
+								    	'salesTax' => 0.00,
+								    	'discount' => 0.00
     	);
     	
       $result = $this->ascent->addSO($values);
             
     } catch (SoapFault $fault) {
-    	return false;
+    	throw new SoapFault($fault);
     }
     
     return $result->result;

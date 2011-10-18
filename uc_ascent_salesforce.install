@@ -24,7 +24,7 @@ function uc_ascent_salesforce_schema() {
       'queue_function' => array(
         'description' => 'The function to run',
         'type' => 'varchar',
-        'length' => 20,
+        'length' => 40,
         'default' => NULL,
       ),
       'order_id' => array(
@@ -40,6 +40,22 @@ function uc_ascent_salesforce_schema() {
         'type' => 'int',
         'default' => 0,
       ),
+      'sf_id' => array(
+        'description' => 'Returned ID from salesforce/ascent',
+        'type' => 'varchar',
+        'length' => 30,
+      ),
+      'parent_qid' => array(
+        'description' => 'Parent queue ID',
+        'type' => 'int',
+        'default' => 0,
+      ),
+      'extra_data' => array(
+        'description' => 'Extra Data',
+        'type' => 'text',
+        'default' => '',
+      ),
+       
       
     ),
     'primary key' => array('qid'),
@@ -79,12 +95,6 @@ function uc_ascent_salesforce_schema() {
         'description' => 'Success status',
         'type' => 'int',
       ),
-      'sf_contact_id' => array(
-        'description' => 'Contact ID of this order contact on salesforce',
-        'type' => 'varchar',
-        'length' => 30,
-      ),
-       
     ),
     'primary key' => array('id'),
   );
