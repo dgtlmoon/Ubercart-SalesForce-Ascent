@@ -1,0 +1,479 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Web Services API : PBSI.Ascent_API
+-->
+<definitions targetNamespace="http://soap.sforce.com/schemas/class/PBSI/Ascent_API" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://soap.sforce.com/schemas/class/PBSI/Ascent_API">
+ <types>
+  <xsd:schema elementFormDefault="qualified" targetNamespace="http://soap.sforce.com/schemas/class/PBSI/Ascent_API">
+   <xsd:element name="DebuggingInfo">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="debugLog" type="xsd:string"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:simpleType name="ID">
+    <xsd:restriction base="xsd:string">
+     <xsd:length value="18"/>
+     <xsd:pattern value="[a-zA-Z0-9]{18}"/>
+    </xsd:restriction>
+   </xsd:simpleType>
+   <xsd:simpleType name="LogCategory">
+    <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="Db"/>
+     <xsd:enumeration value="Workflow"/>
+     <xsd:enumeration value="Validation"/>
+     <xsd:enumeration value="Callout"/>
+     <xsd:enumeration value="Apex_code"/>
+     <xsd:enumeration value="Apex_profiling"/>
+     <xsd:enumeration value="Visualforce"/>
+     <xsd:enumeration value="System"/>
+     <xsd:enumeration value="All"/>
+    </xsd:restriction>
+   </xsd:simpleType>
+   <xsd:simpleType name="LogCategoryLevel">
+    <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="Internal"/>
+     <xsd:enumeration value="Finest"/>
+     <xsd:enumeration value="Finer"/>
+     <xsd:enumeration value="Fine"/>
+     <xsd:enumeration value="Debug"/>
+     <xsd:enumeration value="Info"/>
+     <xsd:enumeration value="Warn"/>
+     <xsd:enumeration value="Error"/>
+    </xsd:restriction>
+   </xsd:simpleType>
+   <xsd:complexType name="LogInfo">
+    <xsd:sequence>
+     <xsd:element name="category" type="tns:LogCategory"/>
+     <xsd:element name="level" type="tns:LogCategoryLevel"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:simpleType name="LogType">
+    <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="None"/>
+     <xsd:enumeration value="Debugonly"/>
+     <xsd:enumeration value="Db"/>
+     <xsd:enumeration value="Profiling"/>
+     <xsd:enumeration value="Callout"/>
+     <xsd:enumeration value="Detail"/>
+    </xsd:restriction>
+   </xsd:simpleType>
+   <xsd:element name="DebuggingHeader">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="categories" minOccurs="0" maxOccurs="unbounded" type="tns:LogInfo"/>
+      <xsd:element name="debugLevel" type="tns:LogType"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="CallOptions">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="client" type="xsd:string"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="SessionHeader">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="sessionId" type="xsd:string"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="AllowFieldTruncationHeader">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="allowFieldTruncation" type="xsd:boolean"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="addAccount">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="accountName" type="xsd:string" nillable="true"/>
+      <xsd:element name="accountNumber" type="xsd:string" nillable="true"/>
+      <xsd:element name="website" type="xsd:string" nillable="true"/>
+      <xsd:element name="Phone" type="xsd:string" nillable="true"/>
+      <xsd:element name="shippingStreet" type="xsd:string" nillable="true"/>
+      <xsd:element name="shippingCity" type="xsd:string" nillable="true"/>
+      <xsd:element name="shippingstate" type="xsd:string" nillable="true"/>
+      <xsd:element name="shippingCode" type="xsd:string" nillable="true"/>
+      <xsd:element name="shippingCountry" type="xsd:string" nillable="true"/>
+      <xsd:element name="billingStreet" type="xsd:string" nillable="true"/>
+      <xsd:element name="billingCity" type="xsd:string" nillable="true"/>
+      <xsd:element name="billingState" type="xsd:string" nillable="true"/>
+      <xsd:element name="billingCode" type="xsd:string" nillable="true"/>
+      <xsd:element name="billingCountry" type="xsd:string" nillable="true"/>
+      <xsd:element name="ParentAccount" type="xsd:string" nillable="true"/>
+      <xsd:element name="accType" type="xsd:string" nillable="true"/>
+      <xsd:element name="industry" type="xsd:string" nillable="true"/>
+      <xsd:element name="anualRevenue" type="xsd:double" nillable="true"/>
+      <xsd:element name="discount" type="xsd:double" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="addAccountResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="result" type="tns:ID" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="addQuote">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="quoteName" type="xsd:string" nillable="true"/>
+      <xsd:element name="accountName" type="xsd:string" nillable="true"/>
+      <xsd:element name="contactName" type="xsd:string" nillable="true"/>
+      <xsd:element name="opportunityName" type="xsd:string" nillable="true"/>
+      <xsd:element name="Status" type="xsd:string" nillable="true"/>
+      <xsd:element name="discount" type="xsd:double" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="addQuoteResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="result" type="tns:ID" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="addQuoteLine">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="quoteName" type="xsd:string" nillable="true"/>
+      <xsd:element name="itemName" type="xsd:string" nillable="true"/>
+      <xsd:element name="quantity" type="xsd:double" nillable="true"/>
+      <xsd:element name="price" type="xsd:double" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="addQuoteLineResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="result" type="tns:ID" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="addSO">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="AccountName" type="xsd:string" nillable="true"/>
+      <xsd:element name="ContactName" type="xsd:string" nillable="true"/>
+      <xsd:element name="shippingInstructions" type="xsd:string" nillable="true"/>
+      <xsd:element name="ShippingCost" type="xsd:double" nillable="true"/>
+      <xsd:element name="salesTax" type="xsd:double" nillable="true"/>
+      <xsd:element name="discount" type="xsd:double" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="addSOResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="result" type="tns:ID" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="addSOLine">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="soName" type="xsd:string" nillable="true"/>
+      <xsd:element name="itemName" type="xsd:string" nillable="true"/>
+      <xsd:element name="price" type="xsd:double" nillable="true"/>
+      <xsd:element name="quantity" type="xsd:double" nillable="true"/>
+      <xsd:element name="discount" type="xsd:double" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="addSOLineResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="result" type="tns:ID" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="editAccount">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="accountName" type="xsd:string" nillable="true"/>
+      <xsd:element name="newaccountNumber" type="xsd:string" nillable="true"/>
+      <xsd:element name="newwebsite" type="xsd:string" nillable="true"/>
+      <xsd:element name="newPhone" type="xsd:string" nillable="true"/>
+      <xsd:element name="newshippingStreet" type="xsd:string" nillable="true"/>
+      <xsd:element name="newshippingCity" type="xsd:string" nillable="true"/>
+      <xsd:element name="newshippingstate" type="xsd:string" nillable="true"/>
+      <xsd:element name="newshippingCode" type="xsd:string" nillable="true"/>
+      <xsd:element name="newshippingCountry" type="xsd:string" nillable="true"/>
+      <xsd:element name="newbillingStreet" type="xsd:string" nillable="true"/>
+      <xsd:element name="newbillingCity" type="xsd:string" nillable="true"/>
+      <xsd:element name="newbillingState" type="xsd:string" nillable="true"/>
+      <xsd:element name="newbillingCode" type="xsd:string" nillable="true"/>
+      <xsd:element name="newbillingCountry" type="xsd:string" nillable="true"/>
+      <xsd:element name="newParentAccount" type="xsd:string" nillable="true"/>
+      <xsd:element name="newaccType" type="xsd:string" nillable="true"/>
+      <xsd:element name="newindustry" type="xsd:string" nillable="true"/>
+      <xsd:element name="newanualRevenue" type="xsd:double" nillable="true"/>
+      <xsd:element name="newdiscount" type="xsd:double" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="editAccountResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="result" type="tns:ID" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="editQuoteLine">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="quoteName" type="xsd:string" nillable="true"/>
+      <xsd:element name="itemName" type="xsd:string" nillable="true"/>
+      <xsd:element name="newitemName" type="xsd:string" nillable="true"/>
+      <xsd:element name="newquantity" type="xsd:double" nillable="true"/>
+      <xsd:element name="newprice" type="xsd:double" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="editQuoteLineResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="result" type="tns:ID" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="editSOLine">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="soName" type="xsd:string" nillable="true"/>
+      <xsd:element name="itemName" type="xsd:string" nillable="true"/>
+      <xsd:element name="newitemname" type="xsd:string" nillable="true"/>
+      <xsd:element name="newprice" type="xsd:double" nillable="true"/>
+      <xsd:element name="newquantity" type="xsd:double" nillable="true"/>
+      <xsd:element name="newdiscount" type="xsd:double" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="editSOLineResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="result" type="tns:ID" nillable="true"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+  </xsd:schema>
+ </types>
+ <!-- Message for the header parts -->
+ <message name="Header">
+  <part name="AllowFieldTruncationHeader" element="tns:AllowFieldTruncationHeader"/>
+  <part name="CallOptions" element="tns:CallOptions"/>
+  <part name="DebuggingHeader" element="tns:DebuggingHeader"/>
+  <part name="DebuggingInfo" element="tns:DebuggingInfo"/>
+  <part name="SessionHeader" element="tns:SessionHeader"/>
+ </message>
+ <!-- Operation Messages -->
+ <message name="addAccountRequest">
+  <part element="tns:addAccount" name="parameters"/>
+ </message>
+ <message name="addAccountResponse">
+  <part element="tns:addAccountResponse" name="parameters"/>
+ </message>
+ <message name="addQuoteRequest">
+  <part element="tns:addQuote" name="parameters"/>
+ </message>
+ <message name="addQuoteResponse">
+  <part element="tns:addQuoteResponse" name="parameters"/>
+ </message>
+ <message name="addQuoteLineRequest">
+  <part element="tns:addQuoteLine" name="parameters"/>
+ </message>
+ <message name="addQuoteLineResponse">
+  <part element="tns:addQuoteLineResponse" name="parameters"/>
+ </message>
+ <message name="addSORequest">
+  <part element="tns:addSO" name="parameters"/>
+ </message>
+ <message name="addSOResponse">
+  <part element="tns:addSOResponse" name="parameters"/>
+ </message>
+ <message name="addSOLineRequest">
+  <part element="tns:addSOLine" name="parameters"/>
+ </message>
+ <message name="addSOLineResponse">
+  <part element="tns:addSOLineResponse" name="parameters"/>
+ </message>
+ <message name="editAccountRequest">
+  <part element="tns:editAccount" name="parameters"/>
+ </message>
+ <message name="editAccountResponse">
+  <part element="tns:editAccountResponse" name="parameters"/>
+ </message>
+ <message name="editQuoteLineRequest">
+  <part element="tns:editQuoteLine" name="parameters"/>
+ </message>
+ <message name="editQuoteLineResponse">
+  <part element="tns:editQuoteLineResponse" name="parameters"/>
+ </message>
+ <message name="editSOLineRequest">
+  <part element="tns:editSOLine" name="parameters"/>
+ </message>
+ <message name="editSOLineResponse">
+  <part element="tns:editSOLineResponse" name="parameters"/>
+ </message>
+ <portType name="Ascent_APIPortType">
+  <operation name="addAccount">
+   <input message="tns:addAccountRequest"/>
+   <output message="tns:addAccountResponse"/>
+  </operation>
+  <operation name="addQuote">
+   <input message="tns:addQuoteRequest"/>
+   <output message="tns:addQuoteResponse"/>
+  </operation>
+  <operation name="addQuoteLine">
+   <input message="tns:addQuoteLineRequest"/>
+   <output message="tns:addQuoteLineResponse"/>
+  </operation>
+  <operation name="addSO">
+   <input message="tns:addSORequest"/>
+   <output message="tns:addSOResponse"/>
+  </operation>
+  <operation name="addSOLine">
+   <input message="tns:addSOLineRequest"/>
+   <output message="tns:addSOLineResponse"/>
+  </operation>
+  <operation name="editAccount">
+   <input message="tns:editAccountRequest"/>
+   <output message="tns:editAccountResponse"/>
+  </operation>
+  <operation name="editQuoteLine">
+   <input message="tns:editQuoteLineRequest"/>
+   <output message="tns:editQuoteLineResponse"/>
+  </operation>
+  <operation name="editSOLine">
+   <input message="tns:editSOLineRequest"/>
+   <output message="tns:editSOLineResponse"/>
+  </operation>
+ </portType>
+ <binding name="Ascent_APIBinding" type="tns:Ascent_APIPortType">
+  <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+  <operation name="addAccount">
+   <soap:operation soapAction=""/>
+   <input>
+    <soap:header use="literal" part="SessionHeader" message="tns:Header"/>
+    <soap:header use="literal" part="CallOptions" message="tns:Header"/>
+    <soap:header use="literal" part="DebuggingHeader" message="tns:Header"/>
+    <soap:header use="literal" part="AllowFieldTruncationHeader" message="tns:Header"/>
+    <soap:body use="literal" parts="parameters"/>
+   </input>
+   <output>
+    <soap:header use="literal" part="DebuggingInfo" message="tns:Header"/>
+    <soap:body use="literal"/>
+   </output>
+  </operation>
+  <operation name="addQuote">
+   <soap:operation soapAction=""/>
+   <input>
+    <soap:header use="literal" part="SessionHeader" message="tns:Header"/>
+    <soap:header use="literal" part="CallOptions" message="tns:Header"/>
+    <soap:header use="literal" part="DebuggingHeader" message="tns:Header"/>
+    <soap:header use="literal" part="AllowFieldTruncationHeader" message="tns:Header"/>
+    <soap:body use="literal" parts="parameters"/>
+   </input>
+   <output>
+    <soap:header use="literal" part="DebuggingInfo" message="tns:Header"/>
+    <soap:body use="literal"/>
+   </output>
+  </operation>
+  <operation name="addQuoteLine">
+   <soap:operation soapAction=""/>
+   <input>
+    <soap:header use="literal" part="SessionHeader" message="tns:Header"/>
+    <soap:header use="literal" part="CallOptions" message="tns:Header"/>
+    <soap:header use="literal" part="DebuggingHeader" message="tns:Header"/>
+    <soap:header use="literal" part="AllowFieldTruncationHeader" message="tns:Header"/>
+    <soap:body use="literal" parts="parameters"/>
+   </input>
+   <output>
+    <soap:header use="literal" part="DebuggingInfo" message="tns:Header"/>
+    <soap:body use="literal"/>
+   </output>
+  </operation>
+  <operation name="addSO">
+   <soap:operation soapAction=""/>
+   <input>
+    <soap:header use="literal" part="SessionHeader" message="tns:Header"/>
+    <soap:header use="literal" part="CallOptions" message="tns:Header"/>
+    <soap:header use="literal" part="DebuggingHeader" message="tns:Header"/>
+    <soap:header use="literal" part="AllowFieldTruncationHeader" message="tns:Header"/>
+    <soap:body use="literal" parts="parameters"/>
+   </input>
+   <output>
+    <soap:header use="literal" part="DebuggingInfo" message="tns:Header"/>
+    <soap:body use="literal"/>
+   </output>
+  </operation>
+  <operation name="addSOLine">
+   <soap:operation soapAction=""/>
+   <input>
+    <soap:header use="literal" part="SessionHeader" message="tns:Header"/>
+    <soap:header use="literal" part="CallOptions" message="tns:Header"/>
+    <soap:header use="literal" part="DebuggingHeader" message="tns:Header"/>
+    <soap:header use="literal" part="AllowFieldTruncationHeader" message="tns:Header"/>
+    <soap:body use="literal" parts="parameters"/>
+   </input>
+   <output>
+    <soap:header use="literal" part="DebuggingInfo" message="tns:Header"/>
+    <soap:body use="literal"/>
+   </output>
+  </operation>
+  <operation name="editAccount">
+   <soap:operation soapAction=""/>
+   <input>
+    <soap:header use="literal" part="SessionHeader" message="tns:Header"/>
+    <soap:header use="literal" part="CallOptions" message="tns:Header"/>
+    <soap:header use="literal" part="DebuggingHeader" message="tns:Header"/>
+    <soap:header use="literal" part="AllowFieldTruncationHeader" message="tns:Header"/>
+    <soap:body use="literal" parts="parameters"/>
+   </input>
+   <output>
+    <soap:header use="literal" part="DebuggingInfo" message="tns:Header"/>
+    <soap:body use="literal"/>
+   </output>
+  </operation>
+  <operation name="editQuoteLine">
+   <soap:operation soapAction=""/>
+   <input>
+    <soap:header use="literal" part="SessionHeader" message="tns:Header"/>
+    <soap:header use="literal" part="CallOptions" message="tns:Header"/>
+    <soap:header use="literal" part="DebuggingHeader" message="tns:Header"/>
+    <soap:header use="literal" part="AllowFieldTruncationHeader" message="tns:Header"/>
+    <soap:body use="literal" parts="parameters"/>
+   </input>
+   <output>
+    <soap:header use="literal" part="DebuggingInfo" message="tns:Header"/>
+    <soap:body use="literal"/>
+   </output>
+  </operation>
+  <operation name="editSOLine">
+   <soap:operation soapAction=""/>
+   <input>
+    <soap:header use="literal" part="SessionHeader" message="tns:Header"/>
+    <soap:header use="literal" part="CallOptions" message="tns:Header"/>
+    <soap:header use="literal" part="DebuggingHeader" message="tns:Header"/>
+    <soap:header use="literal" part="AllowFieldTruncationHeader" message="tns:Header"/>
+    <soap:body use="literal" parts="parameters"/>
+   </input>
+   <output>
+    <soap:header use="literal" part="DebuggingInfo" message="tns:Header"/>
+    <soap:body use="literal"/>
+   </output>
+  </operation>
+ </binding>
+ <service name="Ascent_APIService">
+  <documentation></documentation>
+  <port binding="tns:Ascent_APIBinding" name="Ascent_API">
+   <soap:address location="https://cs3-api.salesforce.com/services/Soap/class/PBSI/Ascent_API"/>
+  </port>
+ </service>
+</definitions>
