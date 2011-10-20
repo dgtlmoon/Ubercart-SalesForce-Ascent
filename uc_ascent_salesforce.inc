@@ -21,7 +21,7 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order = false, $sf_contact
 
 	$accountName = $sf_contact_id;
 	$contactName = $order->delivery_first_name.' '.$order->delivery_last_name;
-	$shippingInstructions = "";
+	$shippingInstructions = _uc_ascent_get_all_order_comments($order->order_id);
 	$shippingCost = _uc_ascent_get_order_total($order->order_id);
   $salesTax = 0; // @todo unsure
   $discount = 0; // @todo integrate with vouchers when that is complete	
@@ -32,6 +32,17 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order = false, $sf_contact
   return false;
 }
 
+function _uc_ascent_get_all_order_comments($order_id) {
+	 $result = db_query("SELECT message FROM {uc_order_comments} WHERE order_id = %d ORDER BY created DESC", $order_id);
+	 $output = "";
+	 
+	 while($row = db_fetch_array($result)) {
+	 	$output .= $row['message']."\n";
+	 }
+	 
+	 return $output;
+	
+}
 function _uc_ascent_get_order_total($order_id) {
 	return db_result(db_query("SELECT sum(amount) FROM {uc_order_line_items} WHERE order_id =%d", $order_id));
 }
@@ -290,7 +301,7 @@ class AscentSFClient extends SforceBaseClient {
 
     	$values = array('AccountName'=> $accountName,
     	                'Contact' => $accountName,
-								    	'shippingInstructions' => "",
+								    	'shippingInstructions' => $shippingInstructions,
 								    	'shippingCost' => $shippingCost,
 								    	'salesTax' => 0.00, // @todo what is salestax based on?
 								    	'discount' => 0.00  // @todo integrate with vouchers?
