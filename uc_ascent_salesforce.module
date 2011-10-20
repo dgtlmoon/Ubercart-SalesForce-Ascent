@@ -4,15 +4,33 @@ function uc_ascent_salesforce_menu() {
 	$items = array();
 	
 	$items['admin/store/settings/uc_salesforce'] = array(
-    'title' => 'SalesForce/Ascent Settings',
+    'title' => 'SalesForce/Ascent Integration',
     'description' => t('Configure the SalesForce Ascent API settings'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('uc_ascent_salesforce_settings_form'),
     'access arguments' => array('administer store'),
     'file' => 'uc_ascent_salesforce.admin.inc',
-    'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_CALLBACK,
   );
-
+  $items['admin/store/settings/uc_salesforce/configure'] = array(
+    'title' => 'API/Security Settings',
+    'description' => t('Configure the SalesForce Ascent API settings'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('uc_ascent_salesforce_settings_form'),
+    'access arguments' => array('administer store'),
+    'file' => 'uc_ascent_salesforce.admin.inc',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10);
+  
+  $items['admin/store/settings/uc_salesforce/queue'] = array(
+    'title' => 'Queue Status',
+    'page callback' => 'uc_ascent_salesforce_queue_info',
+    'access arguments' => array('administer store'),
+    'file' => 'uc_ascent_salesforce.admin.inc',
+    'weight' => 1,
+    'type' => MENU_LOCAL_TASK,
+  );
+  
   return $items;
 }
 	
@@ -90,8 +108,9 @@ function uc_ascent_salesforce_cron() {
   
   // initialize the salesforce ascent/sf object
   $sf = new AscentSFClient();
-  $sf->createConnection($xml_wsdl_base_dir.'/enterprise.wsdl.xml');
-  $sf->createAscentConnection($xml_wsdl_base_dir.'/Ascent_API.xml');  
+  
+  $sf->createConnection($xml_wsdl_base_dir.'/'.variable_get('uc_ascent_salesforce_wsdl_salesforce',''));
+  $sf->createAscentConnection($xml_wsdl_base_dir.'/'.variable_get('uc_ascent_salesforce_wsdl_ascent',''));  
   $username = variable_get('uc_ascent_salesforce_username', '');
   $password = variable_get('uc_ascent_salesforce_password', '').variable_get('uc_ascent_salesforce_token', '');
 
