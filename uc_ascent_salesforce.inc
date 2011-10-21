@@ -276,7 +276,7 @@ class AscentSFClient extends SforceBaseClient {
       $result = $this->ascent->addSOLine($values);
             
     } catch (SoapFault $fault) {
-      throw new SoapFault($fault);
+      throw new SoapFault(1, $fault);
     }
     
     return $result->result;
@@ -310,7 +310,7 @@ class AscentSFClient extends SforceBaseClient {
       $result = $this->ascent->addSO($values);
             
     } catch (SoapFault $fault) {
-    	throw new SoapFault($fault);
+    	throw new SoapFault(1, $fault);
     }
     
     return $result->result;
