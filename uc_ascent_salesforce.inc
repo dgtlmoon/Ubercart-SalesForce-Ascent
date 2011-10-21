@@ -123,7 +123,7 @@ class AscentSFClient extends SforceBaseClient {
     $this->namespace = self::ENTERPRISE_NAMESPACE;
   }
 
-  function createAscentConnection($ascent_wsdl, $proxy) {
+  function createAscentConnection($ascent_wsdl, $proxy = null) {
 
     $soapClientArray = array (
       'user_agent' => 'salesforce-toolkit-php/'.$this->version,
