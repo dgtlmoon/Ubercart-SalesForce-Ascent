@@ -89,16 +89,16 @@ function _get_wsdl_in_resource_directory() {
 
 function uc_ascent_salesforce_queue_info() {
 
-	$header = array(
-    array('data' => t('Queue ID'),  'field' => 'qid', 'sort' => 'dsc'),
+  $header = array(
+    array('data' => t('Queue ID'),  'field' => 'qid'),
     array('data' => t('Function'), 'field' => 'queue_function'),
-    array('data' => t('Order ID'), 'field' => 'order_id'),
+    array('data' => t('Order ID'), 'field' => 'order_id', 'sort' => 'dsc'),
     array('data' => t('Queue Status'), 'field' => 'q_status'),
     array('data' => t('Processed Time'), 'field' => 'recent_request_time'),
     array('data' => t('SF/Ascent ObjectID'), 'field' => 'sf_id'),
   );
 
-  $result = pager_query('SELECT * FROM {uc_sf_queue} '. tablesort_sql($header), 100, 0, NULL, 1);
+  $result = pager_query('SELECT * FROM {uc_sf_queue} '. tablesort_sql($header), 100, 0, 2, 1);
   $rows = array();
   while ($queue_item = db_fetch_object($result)) {
     $rows[] = array(
@@ -106,7 +106,7 @@ function uc_ascent_salesforce_queue_info() {
       check_plain($queue_item->queue_function),
       l($queue_item->order_id,'admin/store/orders/'.$queue_item->order_id),
       !$queue_item->q_status ? t('Waiting') : t('Complete'),
-      $queue_item->recent_request_time,
+      $queue_item->request_recent_time,
       $queue_item->sf_id
     );
   }
