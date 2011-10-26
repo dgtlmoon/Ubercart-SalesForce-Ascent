@@ -97,6 +97,7 @@ function uc_ascent_salesforce_cron() {
 
 	// skip or not
 	if (variable_get('uc_ascent_salesforce_run_cron', false) == false) {
+		watchdog('salesforceascent',t('Cron run skipped because we werent enabled to run.'));
 		return false;
 	}
 	
@@ -139,10 +140,12 @@ function uc_ascent_salesforce_process_jobs($sf, $parent =0 ) {
 	} else {
 		$db_result = db_query("SELECT qid, queue_function, order_id, extra_data, parent_qid FROM {uc_sf_queue} WHERE q_status = 0 ORDER BY qid");
 	}
-	   
   while( $row = db_fetch_array($db_result)) {
     $order = uc_order_load($row['order_id']);
     $time_start = time();
+    $request = "";
+    $response = "";   
+
     try {
       switch($row['queue_function']) {    
         case 'ACCOUNT_UPSERT':
@@ -156,6 +159,8 @@ function uc_ascent_salesforce_process_jobs($sf, $parent =0 ) {
           $sf_contact_id = db_result(db_query("SELECT sf_id FROM uc_sf_queue WHERE order_id = %d", $order->order_id));
           if($sf_contact_id) {
             if ($result = _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_contact_id)) {
+              $response = $sf->ascent->__getLastResponse();
+              $request = $sf->ascent->__getLastRequest();
             	// if this worked, record the ID returned from salesforce
               db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row['qid']);
               // Now for each product, we need to register a lineitem addition
@@ -170,9 +175,13 @@ function uc_ascent_salesforce_process_jobs($sf, $parent =0 ) {
           } 
         break;
         case 'SALESORDER_ENTER_ORDERLINES':
+        
         	$order_product = unserialize($row['extra_data']);        	
         	if($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row['parent_qid'])) ) {
             if ($result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_product)) {
+              $response = $sf->ascent->__getLastResponse();
+              $request = $sf->ascent->__getLastRequest();
+            
               // if this worked, record the ID returned from salesforce
               db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row['qid']);
             }
@@ -190,7 +199,8 @@ function uc_ascent_salesforce_process_jobs($sf, $parent =0 ) {
 	                (qid, request_start_time, request_end_time, 
 	                  request_post, request_reply, result_status)
 	                VALUES (%d, %d, %d, '%s', '%s',%d)", $row['qid'], $time_start, $time_end, 
-	                 $request, $response, $result);    
+	                 $request, $response, $result); 
+
 	      
     } catch ( SoapFault $err ) {
       uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", $err);     
