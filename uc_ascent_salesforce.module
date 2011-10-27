@@ -105,6 +105,8 @@ function uc_ascent_salesforce_cron() {
 	include_once(drupal_get_path('module', 'uc_ascent_salesforce').'/resources/salesforce/soapclient/SforceEnterpriseClient.php');
 	include_once(drupal_get_path('module', 'uc_ascent_salesforce').'/uc_ascent_salesforce.inc');
   
+	ini_set("soap.wsdl_cache_enabled", 0); //ensure caching is off, we dont call it enough to worry  
+	
   $xml_wsdl_base_dir = drupal_get_path('module', 'uc_ascent_salesforce').'/resources';
   
   // initialize the salesforce ascent/sf object
@@ -205,7 +207,15 @@ function uc_ascent_salesforce_process_jobs($sf, $parent =0 ) {
 
 	      
     } catch ( SoapFault $err ) {
-      uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", $err);     
+      uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", $err);
+              $response = $sf->ascent->__getLastResponse();
+              $request = $sf->ascent->__getLastRequest();
+       db_query("INSERT INTO {uc_sf_queue_log} 
+                  (qid, request_start_time, request_end_time, 
+                    request_post, request_reply, result_status)
+                  VALUES (%d, %d, %d, '%s', '%s',%d)", $row['qid'], $time_start, $time_end, 
+                   $request, $response, $result); 
+      
     }
 
     // process any children of this
