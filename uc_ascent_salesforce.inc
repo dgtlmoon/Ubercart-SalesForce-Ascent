@@ -17,16 +17,15 @@ function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_
 }
 
 
-function _uc_ascent_salesforce_salesforce_enter($sf, $order = false, $sf_contact_id) {
+function _uc_ascent_salesforce_salesforce_enter($sf, $order = false, $sf_account_id, $sf_contact_id) {
 
-	$accountName = $sf_contact_id;
 	$contactName = $order->delivery_first_name.' '.$order->delivery_last_name;
 	$shippingInstructions = _uc_ascent_get_all_order_comments($order->order_id);
 	$shippingCost = _uc_ascent_get_order_total($order->order_id);
   $salesTax = 0; // @todo unsure
   $discount = 0; // @todo integrate with vouchers when that is complete	
 
-  if ($result =$sf->addSalesOrder($accountName, $contactName, $shippingInstructions, $shippingCost, $salesTax, $discount ) ) {
+  if ($result =$sf->addSalesOrder($sf_account_id, $sf_contact_id, $shippingInstructions, $shippingCost, $salesTax, $discount ) ) {
   	return $result;
   } 		
   return false;
@@ -61,7 +60,7 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
 		return false;
 	}
 	
-	$result = $sf->queryAll("SELECT Id, FirstName, LastName FROM Contact WHERE FirstName = '{$order->delivery_first_name}' AND LastName = '{$order->delivery_last_name}'");
+	$result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE FirstName = '{$order->delivery_first_name}' AND LastName = '{$order->delivery_last_name}'");
 	 
 	if( $result->size ==0 ) {
 	  $delivery_zone = uc_get_zone_code($order->delivery_zone);
@@ -88,7 +87,7 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
      );
      
      $response = $sf->create(array($record), 'Account');
-
+     $return['accountId'] = $response[0]->id;
       
 		$record = array (
       'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}",
@@ -104,14 +103,18 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
 		  'MobilePhone' => $order->delivery_phone,
 		  'AccountId' => $response[0]->id
      );
-     
+      
       $response = $sf->create(array($record), 'Contact');
-      $id = $response[0]->id;       // hows that for annoying, this "id"
+      $return['contactId'] = $response[0]->id;
+      
 	} else {
-		$id = $result->records[0]->Id;  // and this is "Id"
+	    $return['accountId'] = $result->records[0]->AccountId;
+	    $return['contactId'] = $result->records[0]->Id;
+
 	}
 	
-  return $id;
+      
+  return $return;
 }
 
   
@@ -259,15 +262,29 @@ class AscentSFClient extends SforceBaseClient {
     return parent::_merge($arg);
   }
   
-  // global id addSOLine(string soName,string itemName,double price, double quantity,double discount)
-  
-  public function addSalesOrderLineItem($soName, $itemName, $price, $quantity, $discount) {
+
+  /**
+    *   <xsd:element name="addSOLine">
+    *    <xsd:complexType>
+    *     <xsd:sequence>
+    *      <xsd:element name="soId" type="xsd:string" nillable="true"/>
+    *      <xsd:element name="itemId" type="xsd:string" nillable="true"/>
+    *      <xsd:element name="price" type="xsd:double" nillable="true"/>
+    *      <xsd:element name="quantity" type="xsd:double" nillable="true"/>
+    *      <xsd:element name="discount" type="xsd:double" nillable="true"/>
+    *     </xsd:sequence>
+    *    </xsd:complexType>
+    *   </xsd:element>
+    *    
+    */
+    
+  public function addSalesOrderLineItem($soId, $itemId, $price, $quantity, $discount) {
   	$this->_setSessionHeader($this->ascent);    
 
   	try {
 
-      $values = array('soName'=> $soName,
-                      'itemName' => $itemName,
+      $values = array('soId'=> $soId,
+                      'itemId' => $itemId,
                       'price' => $price, //@todo each is it?
                       'quantity' => $quantity,
                       'discount' => $discount,
@@ -286,25 +303,38 @@ class AscentSFClient extends SforceBaseClient {
   /**
    * add a SalesOrder to Ascent API
    * 
-   * global id addSO(string AccountName,
-   *                  string ContactName,
+   * global id addSO(string AccountID,
+   *                  string ContactID,
    *                  String shippingInstructions,
    *                  Double ShippingCost,
    *                  Double salesTax,
-   *                  double discount) 
+   *                  double discount)
+   * From WSDL
+   *    <xsd:element name="addSO">
+   *    <xsd:complexType>
+   *   <xsd:sequence>
+   *  <xsd:element name="AccountId" type="xsd:string" nillable="true"/>
+   *  <xsd:element name="contactId" type="xsd:string" nillable="true"/>
+   *  <xsd:element name="shippingInstructions" type="xsd:string" nillable="true"/>
+   *  <xsd:element name="ShippingCost" type="xsd:double" nillable="true"/>
+   *  <xsd:element name="salesTax" type="xsd:double" nillable="true"/>
+   *  <xsd:element name="discount" type="xsd:double" nillable="true"/>
+   *  </xsd:sequence>
+   *  </xsd:complexType>
+   *  </xsd:element>
    */   
-  public function addSalesOrder($accountName, $contactName, $shippingInstructions, $shippingCost, $salesTax, $discount ) {
+  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost, $salesTax, $discount ) {
   	
     $this->_setSessionHeader($this->ascent);    
     
     try {
 
-    	$values = array('AccountName'=> $accountName,
-    	                'Contact' => $accountName,
-								    	'shippingInstructions' => $shippingInstructions,
-								    	'shippingCost' => $shippingCost,
-								    	'salesTax' => 0.00, // @todo what is salestax based on?
-								    	'discount' => 0.00  // @todo integrate with vouchers?
+    	$values = array('AccountId'=> $accountId,
+    	                'contactId' => $contactId,
+		    	'shippingInstructions' => strip_tags($shippingInstructions),
+		    	'shippingCost' => $shippingCost,
+		    	'salesTax' => 0.00, // @todo what is salestax based on?
+		    	'discount' => 0.00  // @todo integrate with vouchers?
     	);
     	
       $result = $this->ascent->addSO($values);

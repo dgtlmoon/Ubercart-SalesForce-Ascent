@@ -5,7 +5,8 @@
  */
 function uc_ascent_salesforce_settings_form() {
   global $base_url;
- 
+  ini_set("soap.wsdl_cache_enabled", 0);
+  
   // ensure some settings
   if ( !variable_get('uc_ascent_salesforce_wsdl_ascent', false) || !variable_get('uc_ascent_salesforce_wsdl_salesforce', false)) {
     drupal_set_message('WSDL\'s are not configurated correctly, please select an Ascent and Salesforce Enterprise XML WSDL');	

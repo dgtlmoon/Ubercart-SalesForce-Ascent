@@ -151,14 +151,16 @@ function uc_ascent_salesforce_process_jobs($sf, $parent =0 ) {
         case 'ACCOUNT_UPSERT':
           if ($id = _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) ) {
             // record the status and set the flag as 1 = processed
-            db_query("UPDATE {uc_sf_queue} SET sf_id = '%s', q_status=1 WHERE qid='%d'", $id, $row['qid']);
+            db_query("UPDATE {uc_sf_queue} SET extra_data = '%s', q_status=1 WHERE qid='%d'", serialize($id), $row['qid']);
           }         
         break;
         case 'SALESORDER_ENTER':
           // grab the SF contact ID from any previous update to this 
-          $sf_contact_id = db_result(db_query("SELECT sf_id FROM uc_sf_queue WHERE order_id = %d", $order->order_id));
-          if($sf_contact_id) {
-            if ($result = _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_contact_id)) {
+          $sf_id = unserialize(db_result(db_query("SELECT extra_data FROM uc_sf_queue WHERE order_id = %d AND queue_function = 'ACCOUNT_UPSERT' ", $order->order_id)));
+          if($sf_id) {
+            $sf_contact_id = $sf_id['contactId'];
+            $sf_account_id = $sf_id['accountId'];            
+            if ($result = _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf_contact_id)) {
               $response = $sf->ascent->__getLastResponse();
               $request = $sf->ascent->__getLastRequest();
             	// if this worked, record the ID returned from salesforce
