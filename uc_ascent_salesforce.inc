@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 /**
  * Registers the order line item with salesforce
@@ -6,44 +6,45 @@
  * @param object of each order product from $order $order_product
  */
 function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_product) {
-	//addSOLine(string soName,string itemName,double price, double quantity,double discount)
-	
-	$discount = 0.00; //@todo integrate discounts when vouchers are in use
-	if ($result =$sf->addSalesOrderLineItem($soName, $order_product->model, $order_product->price, $order_product->qty, $discount ) ) {
+  //addSOLine(string soName,string itemName,double price, double quantity,double discount)
+  
+
+  $discount = 0.00; //@todo integrate discounts when vouchers are in use
+  if ($result = $sf->addSalesOrderLineItem($soName, $order_product->model, $order_product->price, $order_product->qty, $discount)) {
     return $result;
   }
-       
+  
   return false;
 }
 
-
 function _uc_ascent_salesforce_salesforce_enter($sf, $order = false, $sf_account_id, $sf_contact_id) {
-
-	$contactName = $order->delivery_first_name.' '.$order->delivery_last_name;
-	$shippingInstructions = _uc_ascent_get_all_order_comments($order->order_id);
-	$shippingCost = _uc_ascent_get_order_total($order->order_id);
+  
+  $contactName = $order->delivery_first_name . ' ' . $order->delivery_last_name;
+  $shippingInstructions = _uc_ascent_get_all_order_comments($order->order_id);
+  $shippingCost = _uc_ascent_get_order_total($order->order_id);
   $salesTax = 0; // @todo unsure
   $discount = 0; // @todo integrate with vouchers when that is complete	
+  
 
-  if ($result =$sf->addSalesOrder($sf_account_id, $sf_contact_id, $shippingInstructions, $shippingCost, $salesTax, $discount ) ) {
-  	return $result;
-  } 		
+  if ($result = $sf->addSalesOrder($sf_account_id, $sf_contact_id, $shippingInstructions, $shippingCost, $salesTax, $discount)) {
+    return $result;
+  }
   return false;
 }
 
 function _uc_ascent_get_all_order_comments($order_id) {
-	 $result = db_query("SELECT message FROM {uc_order_comments} WHERE order_id = %d ORDER BY created DESC", $order_id);
-	 $output = "";
-	 
-	 while($row = db_fetch_array($result)) {
-	 	$output .= $row['message']."\n";
-	 }
-	 
-	 return $output;
-	
+  $result = db_query("SELECT message FROM {uc_order_comments} WHERE order_id = %d ORDER BY created DESC", $order_id);
+  $output = "";
+  
+  while ($row = db_fetch_array($result)) {
+    $output .= $row ['message'] . "\n";
+  }
+  
+  return $output;
+
 }
 function _uc_ascent_get_order_total($order_id) {
-	return db_result(db_query("SELECT sum(amount) FROM {uc_order_line_items} WHERE order_id =%d", $order_id));
+  return db_result(db_query("SELECT sum(amount) FROM {uc_order_line_items} WHERE order_id =%d", $order_id));
 }
 
 /**
@@ -54,99 +55,79 @@ function _uc_ascent_get_order_total($order_id) {
  * @return the contact ID of this person in SF
  */
 function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
-	
-	if(!$order->uid) {
-		// only orders that have created accounts (Should be in state payment_received)
-		return false;
-	}
-	
-	$result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE FirstName = '{$order->delivery_first_name}' AND LastName = '{$order->delivery_last_name}'");
-	 
-	if( $result->size ==0 ) {
-	  $delivery_zone = uc_get_zone_code($order->delivery_zone);
-	  $delivery_country  = uc_get_country_data(array('country_id'=>$order->delivery_country));
+  
+  if (! $order->uid) {
+    // only orders that have created accounts (Should be in state payment_received)
+    return false;
+  }
+  
+  $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE FirstName = '{$order->delivery_first_name}' AND LastName = '{$order->delivery_last_name}'");
+  
+  if ($result->size == 0) {
+    $delivery_zone = uc_get_zone_code($order->delivery_zone);
+    $delivery_country = uc_get_country_data(array (
+      'country_id' => $order->delivery_country 
+    ));
     $billing_zone = uc_get_zone_code($order->billing_zone);
-    $billing_country  = uc_get_country_data(array('country_id'=>$order->billing_country));
-	  
-	  // create the Account for this
+    $billing_country = uc_get_country_data(array (
+      'country_id' => $order->billing_country 
+    ));
+    
+    // create the Account for this
+    
 
     $record = array (
-      'BillingCity' => $order->billing_city,
-      'BillingCountry' => $billing_country[0]['country_name'],
-      'BillingPostalCode' => $order->billing_postal_code,
-      'BillingState' => $billing_zone,
-      'BillingStreet' => $order->billing_street1.' '.$order->billing_street2,   
-      'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}",
-      'Name' => $order->billing_first_name.' '.$order->billing_last_name,
-      'Phone' => $order->billing_phone,    
-      'ShippingCity' => $order->billing_city,
-      'ShippingState' => $delivery_zone,
-      'ShippingCountry' => $delivery_country[0]['country_name'],
-      'ShippingPostalCode' => $order->delivery_postal_code,
-      'ShippingStreet' => $order->delivery_street1.' '.$order->delivery_street2,
-     );
-     
-     $response = $sf->create(array($record), 'Account');
-     $return['accountId'] = $response[0]->id;
-      
-		$record = array (
-      'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}",
-      'Email' => $order->primary_email,
-      'Firstname' => $order->delivery_first_name,
-      'Homephone' => $order->delivery_phone,
-      'Lastname' => $order->delivery_last_name,
-      'MailingCity' => $order->delivery_city,
-      'MailingState' => $delivery_zone,
-      'MailingCountry' => $delivery_country[0]['country_name'],
-      'MailingPostalCode' => $order->delivery_postal_code,
-      'MailingStreet' => $order->delivery_street1.' '.$order->delivery_street2,
-		  'MobilePhone' => $order->delivery_phone,
-		  'AccountId' => $response[0]->id
-     );
-      
-      $response = $sf->create(array($record), 'Contact');
-      $return['contactId'] = $response[0]->id;
-      
-	} else {
-	    $return['accountId'] = $result->records[0]->AccountId;
-	    $return['contactId'] = $result->records[0]->Id;
-
-	}
-	
-      
+      'BillingCity' => $order->billing_city, 'BillingCountry' => $billing_country [0] ['country_name'], 'BillingPostalCode' => $order->billing_postal_code, 'BillingState' => $billing_zone, 'BillingStreet' => $order->billing_street1 . ' ' . $order->billing_street2, 'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}", 'Name' => $order->billing_first_name . ' ' . $order->billing_last_name, 'Phone' => $order->billing_phone, 'ShippingCity' => $order->billing_city, 'ShippingState' => $delivery_zone, 'ShippingCountry' => $delivery_country [0] ['country_name'], 'ShippingPostalCode' => $order->delivery_postal_code, 'ShippingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2 
+    );
+    
+    $response = $sf->create(array (
+      $record 
+    ), 'Account');
+    $return ['accountId'] = $response [0]->id;
+    
+    $record = array (
+      'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}", 'Email' => $order->primary_email, 'Firstname' => $order->delivery_first_name, 'Homephone' => $order->delivery_phone, 'Lastname' => $order->delivery_last_name, 'MailingCity' => $order->delivery_city, 'MailingState' => $delivery_zone, 'MailingCountry' => $delivery_country [0] ['country_name'], 'MailingPostalCode' => $order->delivery_postal_code, 'MailingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2, 'MobilePhone' => $order->delivery_phone, 'AccountId' => $response [0]->id 
+    );
+    
+    $response = $sf->create(array (
+      $record 
+    ), 'Contact');
+    $return ['contactId'] = $response [0]->id;
+  
+  }
+  else {
+    $return ['accountId'] = $result->records [0]->AccountId;
+    $return ['contactId'] = $result->records [0]->Id;
+  
+  }
+  
   return $return;
 }
 
-  
-
 class AscentSFClient extends SforceBaseClient {
   const ENTERPRISE_NAMESPACE = 'urn:enterprise.soap.sforce.com';
-
+  
   function AscentSFClient() {
     $this->namespace = self::ENTERPRISE_NAMESPACE;
   }
-
+  
   function createAscentConnection($ascent_wsdl, $proxy = null) {
-
+    
     $soapClientArray = array (
-      'user_agent' => 'salesforce-toolkit-php/'.$this->version,
-      'encoding' => 'utf-8',
-      'trace' => 1,
-      'compression' => SOAP_COMPRESSION_ACCEPT | SOAP_COMPRESSION_GZIP
+      'user_agent' => 'salesforce-toolkit-php/' . $this->version, 'encoding' => 'utf-8', 'trace' => 1, 'compression' => SOAP_COMPRESSION_ACCEPT | SOAP_COMPRESSION_GZIP 
     );
-
-
+    
     if ($proxy != null) {
-            $proxySettings = array();
-            $proxySettings['proxy_host'] = $proxy->host;
-            $proxySettings['proxy_port'] = $proxy->port; // Use an integer, not a string
-            $proxySettings['proxy_login'] = $proxy->login; 
-            $proxySettings['proxy_password'] = $proxy->password;
-            $soapClientArray = array_merge($soapClientArray, $proxySettings);
+      $proxySettings = array ();
+      $proxySettings ['proxy_host'] = $proxy->host;
+      $proxySettings ['proxy_port'] = $proxy->port; // Use an integer, not a string
+      $proxySettings ['proxy_login'] = $proxy->login;
+      $proxySettings ['proxy_password'] = $proxy->password;
+      $soapClientArray = array_merge($soapClientArray, $proxySettings);
     }
-
+    
     $this->ascent = new SoapClient($ascent_wsdl, $soapClientArray);
-  } 
+  }
   
   /**
    * Adds one or more new individual objects to your organization's data.
@@ -159,26 +140,27 @@ class AscentSFClient extends SforceBaseClient {
     foreach ($sObjects as &$sObject) {
       // FIX for fieldsToNull issue - allow array in fieldsToNull (STEP #1)
       $xmlStr = '';
-      if(isset($sObject->fieldsToNull) && is_array($sObject->fieldsToNull)) {
-        foreach($sObject->fieldsToNull as $fieldToNull) {
+      if (isset($sObject->fieldsToNull) && is_array($sObject->fieldsToNull)) {
+        foreach ($sObject->fieldsToNull as $fieldToNull) {
           $xmlStr .= '<fieldsToNull>' . $fieldToNull . '</fieldsToNull>';
         }
       }
       // ------
       
-      $sObject = new SoapVar($sObject, SOAP_ENC_OBJECT, $type, $this->namespace);
 
+      $sObject = new SoapVar($sObject, SOAP_ENC_OBJECT, $type, $this->namespace);
+      
       // FIX for fieldsToNull issue - allow array in fieldsToNull (STEP #2)
-      if($xmlStr != '') {
+      if ($xmlStr != '') {
         $sObject->enc_value->fieldsToNull = new SoapVar(new SoapVar($xmlStr, XSD_ANYXML), SOAP_ENC_ARRAY);
       }
       // ------
     }
     $arg = $sObjects;
-
+    
     return parent::_create(new SoapParam($arg, "sObjects"));
   }
-
+  
   /**
    * Updates one or more new individual objects to your organization's data.
    * @param array sObjects    Array of sObjects
@@ -187,31 +169,32 @@ class AscentSFClient extends SforceBaseClient {
    * @return UpdateResult
    */
   public function update($sObjects, $type, $assignment_header = NULL, $mru_header = NULL) {
-
+    
     foreach ($sObjects as &$sObject) {
-
+      
       // FIX for fieldsToNull issue - allow array in fieldsToNull (STEP #1)
       $xmlStr = '';
-      if(isset($sObject->fieldsToNull) && is_array($sObject->fieldsToNull)) {
-        foreach($sObject->fieldsToNull as $fieldToNull) {
+      if (isset($sObject->fieldsToNull) && is_array($sObject->fieldsToNull)) {
+        foreach ($sObject->fieldsToNull as $fieldToNull) {
           $xmlStr .= '<fieldsToNull>' . $fieldToNull . '</fieldsToNull>';
         }
       }
       // ------
       
+
       $sObject = new SoapVar($sObject, SOAP_ENC_OBJECT, $type, $this->namespace);
       
       // FIX for fieldsToNull issue - allow array in fieldsToNull (STEP #2)
-      if($xmlStr != '') {
+      if ($xmlStr != '') {
         $sObject->enc_value->fieldsToNull = new SoapVar(new SoapVar($xmlStr, XSD_ANYXML), SOAP_ENC_ARRAY);
       }
       // ------
     }
-    $arg = new stdClass;
+    $arg = new stdClass();
     $arg->sObjects = $sObjects;
     return parent::_update($arg);
   }
-
+  
   /**
    * Creates new objects and updates existing objects; uses a custom field to
    * determine the presence of existing objects. In most cases, we recommend
@@ -224,30 +207,31 @@ class AscentSFClient extends SforceBaseClient {
    * @return UpsertResult
    */
   public function upsert($ext_Id, $sObjects, $type = 'Contact') {
-    $arg = new stdClass;
+    $arg = new stdClass();
     $arg->externalIDFieldName = new SoapVar($ext_Id, XSD_STRING, 'string', 'http://www.w3.org/2001/XMLSchema');
     foreach ($sObjects as &$sObject) {
       // FIX for fieldsToNull issue - allow array in fieldsToNull (STEP #1)
       $xmlStr = '';
-      if(isset($sObject->fieldsToNull) && is_array($sObject->fieldsToNull)) {
-      foreach($sObject->fieldsToNull as $fieldToNull) {
-        $xmlStr .= '<fieldsToNull>' . $fieldToNull . '</fieldsToNull>';
-      }
+      if (isset($sObject->fieldsToNull) && is_array($sObject->fieldsToNull)) {
+        foreach ($sObject->fieldsToNull as $fieldToNull) {
+          $xmlStr .= '<fieldsToNull>' . $fieldToNull . '</fieldsToNull>';
+        }
       }
       // ------
       
-      $sObject = new SoapVar($sObject, SOAP_ENC_OBJECT, $type, $this->namespace);
 
-    // FIX for fieldsToNull issue - allow array in fieldsToNull (STEP #2)
-    if($xmlStr != '') {
-      $sObject->enc_value->fieldsToNull = new SoapVar(new SoapVar($xmlStr, XSD_ANYXML), SOAP_ENC_ARRAY);
-    }
-    // ------
+      $sObject = new SoapVar($sObject, SOAP_ENC_OBJECT, $type, $this->namespace);
+      
+      // FIX for fieldsToNull issue - allow array in fieldsToNull (STEP #2)
+      if ($xmlStr != '') {
+        $sObject->enc_value->fieldsToNull = new SoapVar(new SoapVar($xmlStr, XSD_ANYXML), SOAP_ENC_ARRAY);
+      }
+      // ------
     }
     $arg->sObjects = $sObjects;
     return parent::_upsert($arg);
   }
-
+  
   /**
    * Merge records
    *
@@ -257,159 +241,138 @@ class AscentSFClient extends SforceBaseClient {
    */
   public function merge($mergeRequest, $type) {
     $mergeRequest->masterRecord = new SoapVar($mergeRequest->masterRecord, SOAP_ENC_OBJECT, $type, $this->namespace);
-    $arg = new stdClass;
+    $arg = new stdClass();
     $arg->request = new SoapVar($mergeRequest, SOAP_ENC_OBJECT, 'MergeRequest', $this->namespace);
     return parent::_merge($arg);
   }
   
-
   /**
-    *   <xsd:element name="addSOLine">
-    *    <xsd:complexType>
-    *     <xsd:sequence>
-    *      <xsd:element name="soId" type="xsd:string" nillable="true"/>
-    *      <xsd:element name="itemId" type="xsd:string" nillable="true"/>
-    *      <xsd:element name="price" type="xsd:double" nillable="true"/>
-    *      <xsd:element name="quantity" type="xsd:double" nillable="true"/>
-    *      <xsd:element name="discount" type="xsd:double" nillable="true"/>
-    *     </xsd:sequence>
-    *    </xsd:complexType>
-    *   </xsd:element>
-    *    
-    */
-    
+   * <xsd:element name="addSOLine">
+   * <xsd:complexType>
+   * <xsd:sequence>
+   * <xsd:element name="soId" type="xsd:string" nillable="true"/>
+   * <xsd:element name="itemId" type="xsd:string" nillable="true"/>
+   * <xsd:element name="price" type="xsd:double" nillable="true"/>
+   * <xsd:element name="quantity" type="xsd:double" nillable="true"/>
+   * <xsd:element name="discount" type="xsd:double" nillable="true"/>
+   * </xsd:sequence>
+   * </xsd:complexType>
+   * </xsd:element>
+   * 
+   */
+  
   public function addSalesOrderLineItem($soId, $itemId, $price, $quantity, $discount) {
-  	$this->_setSessionHeader($this->ascent);    
-
-  	try {
-
-      $values = array('soId'=> $soId,
-                      'itemId' => $itemId,
-                      'price' => $price, //@todo each is it?
-                      'quantity' => $quantity,
-                      'discount' => $discount,
+    $this->_setSessionHeader($this->ascent);
+    
+    try {
+      
+      $values = array (
+        'soId' => $soId, 'itemId' => $itemId, 'price' => $price, //@todo each is it?
+'quantity' => $quantity, 'discount' => $discount 
       );
       
       $result = $this->ascent->addSOLine($values);
-            
-    } catch (SoapFault $fault) {
+    
+    }
+    catch (SoapFault $fault) {
       throw new SoapFault(1, $fault);
     }
     
     return $result->result;
   }
   
-  
   /**
    * add a SalesOrder to Ascent API
    * 
    * global id addSO(string AccountID,
-   *                  string ContactID,
-   *                  String shippingInstructions,
-   *                  Double ShippingCost,
-   *                  Double salesTax,
-   *                  double discount)
+   * string ContactID,
+   * String shippingInstructions,
+   * Double ShippingCost,
+   * Double salesTax,
+   * double discount)
    * From WSDL
-   *    <xsd:element name="addSO">
-   *    <xsd:complexType>
-   *   <xsd:sequence>
-   *  <xsd:element name="AccountId" type="xsd:string" nillable="true"/>
-   *  <xsd:element name="contactId" type="xsd:string" nillable="true"/>
-   *  <xsd:element name="shippingInstructions" type="xsd:string" nillable="true"/>
-   *  <xsd:element name="ShippingCost" type="xsd:double" nillable="true"/>
-   *  <xsd:element name="salesTax" type="xsd:double" nillable="true"/>
-   *  <xsd:element name="discount" type="xsd:double" nillable="true"/>
-   *  </xsd:sequence>
-   *  </xsd:complexType>
-   *  </xsd:element>
-   */   
-  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost, $salesTax, $discount ) {
-  	
-    $this->_setSessionHeader($this->ascent);    
+   * <xsd:element name="addSO">
+   * <xsd:complexType>
+   * <xsd:sequence>
+   * <xsd:element name="AccountId" type="xsd:string" nillable="true"/>
+   * <xsd:element name="contactId" type="xsd:string" nillable="true"/>
+   * <xsd:element name="shippingInstructions" type="xsd:string" nillable="true"/>
+   * <xsd:element name="ShippingCost" type="xsd:double" nillable="true"/>
+   * <xsd:element name="salesTax" type="xsd:double" nillable="true"/>
+   * <xsd:element name="discount" type="xsd:double" nillable="true"/>
+   * </xsd:sequence>
+   * </xsd:complexType>
+   * </xsd:element>
+   */
+  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost, $salesTax, $discount) {
+    
+    $this->_setSessionHeader($this->ascent);
     
     try {
-
-    	$values = array('AccountId'=> $accountId,
-    	                'contactId' => $contactId,
-		    	'shippingInstructions' => strip_tags($shippingInstructions),
-		    	'shippingCost' => $shippingCost,
-		    	'salesTax' => 0.00, // @todo what is salestax based on?
-		    	'discount' => 0.00  // @todo integrate with vouchers?
-    	);
-    	
+      
+      $values = array (
+        'AccountId' => $accountId, 'contactId' => $contactId, 'shippingInstructions' => strip_tags($shippingInstructions), 'shippingCost' => $shippingCost, 'salesTax' => 0.00, // @todo what is salestax based on?
+'discount' => 0.00  // @todo integrate with vouchers?
+      );
+      
       $result = $this->ascent->addSO($values);
-            
-    } catch (SoapFault $fault) {
-    	throw new SoapFault(1, $fault);
+    
+    }
+    catch (SoapFault $fault) {
+      throw new SoapFault(1, $fault);
     }
     
     return $result->result;
   }
   
-  private function setHeaders($call=NULL) {
+  private function setHeaders($call = NULL) {
     $this->sforce->__setSoapHeaders(NULL);
     
     $header_array = array (
-      $this->sessionHeader
+      $this->sessionHeader 
     );
-
+    
     $header = $this->callOptions;
     if ($header != NULL) {
       array_push($header_array, $header);
     }
-
-    if ($call == "create" ||
-    $call == "merge" ||
-    $call == "update" ||
-    $call == "upsert"
-    ) {
+    
+    if ($call == "create" || $call == "merge" || $call == "update" || $call == "upsert") {
       $header = $this->assignmentRuleHeader;
       if ($header != NULL) {
         array_push($header_array, $header);
       }
     }
-
+    
     if ($call == "login") {
       $header = $this->loginScopeHeader;
       if ($header != NULL) {
         array_push($header_array, $header);
       }
     }
-
-    if ($call == "create" ||
-    $call == "resetPassword" ||
-    $call == "update" ||
-    $call == "upsert"
-    ) {
+    
+    if ($call == "create" || $call == "resetPassword" || $call == "update" || $call == "upsert") {
       $header = $this->emailHeader;
       if ($header != NULL) {
         array_push($header_array, $header);
       }
     }
-
-    if ($call == "create" ||
-    $call == "merge" ||
-    $call == "query" ||
-    $call == "retrieve" ||
-    $call == "update" ||
-    $call == "upsert"
-    ) {
+    
+    if ($call == "create" || $call == "merge" || $call == "query" || $call == "retrieve" || $call == "update" || $call == "upsert") {
       $header = $this->mruHeader;
       if ($header != NULL) {
         array_push($header_array, $header);
       }
     }
-
+    
     if ($call == "delete") {
       $header = $this->userTerritoryDeleteHeader;
       if ($header != NULL) {
         array_push($header_array, $header);
       }
     }
-
-    if ($call == "query" ||
-    $call == "queryMore" ||
-    $call == "retrieve") {
+    
+    if ($call == "query" || $call == "queryMore" || $call == "retrieve") {
       $header = $this->queryHeader;
       if ($header != NULL) {
         array_push($header_array, $header);
@@ -417,10 +380,8 @@ class AscentSFClient extends SforceBaseClient {
     }
     
     // try to add allowFieldTruncationHeader
-    $allowFieldTruncationHeaderCalls = array(
-      'convertLead', 'create', 'merge',
-      'process', 'undelete', 'update',
-      'upsert',
+    $allowFieldTruncationHeaderCalls = array (
+      'convertLead', 'create', 'merge', 'process', 'undelete', 'update', 'upsert' 
     );
     if (in_array($call, $allowFieldTruncationHeaderCalls)) {
       $header = $this->allowFieldTruncationHeader;
@@ -438,30 +399,28 @@ class AscentSFClient extends SforceBaseClient {
     }
     
     // try to add PackageVersionHeader
-    $packageVersionHeaderCalls = array(
-      'convertLead', 'create', 'delete', 'describeGlobal',
-      'describeLayout', 'describeSObject', 'describeSObjects',
-      'describeSoftphoneLayout', 'describeTabs', 'merge',
-      'process', 'query', 'retrieve', 'search', 'undelete',
-      'update', 'upsert',
+    $packageVersionHeaderCalls = array (
+      'convertLead', 'create', 'delete', 'describeGlobal', 'describeLayout', 'describeSObject', 'describeSObjects', 'describeSoftphoneLayout', 'describeTabs', 'merge', 'process', 'query', 'retrieve', 'search', 'undelete', 'update', 'upsert' 
     );
-    if(in_array($call, $packageVersionHeaderCalls)) {
+    if (in_array($call, $packageVersionHeaderCalls)) {
       $header = $this->packageVersionHeader;
       if ($header != NULL) {
         array_push($header_array, $header);
       }
-    }    
+    }
     
     $this->sforce->__setSoapHeaders($header_array);
-    
+  
   }
   
-  function _setSessionHeader(&$soapInterface) {   
+  function _setSessionHeader(&$soapInterface) {
     $strHeaderComponent_Session = "<SessionHeader><sessionId>{$this->sessionId}</sessionId></SessionHeader>";
     $objVar_Session_Inside = new SoapVar($strHeaderComponent_Session, XSD_ANYXML, null, null, null);
     $objHeader_Session_Outside = new SoapHeader('http://soap.sforce.com/schemas/class/PBSI/Ascent_API', 'SessionHeader', $objVar_Session_Inside);
-    $soapInterface->__setSoapHeaders(array($objHeader_Session_Outside));
-  } 
-  
+    $soapInterface->__setSoapHeaders(array (
+      $objHeader_Session_Outside 
+    ));
+  }
+
 }
 

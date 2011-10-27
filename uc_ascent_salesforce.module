@@ -1,39 +1,32 @@
-<?php 
+<?php
 
 function uc_ascent_salesforce_menu() {
-	$items = array();
-	
-	$items['admin/store/settings/uc_salesforce'] = array(
-    'title' => 'SalesForce/Ascent Integration',
-    'description' => t('Configure the SalesForce Ascent API settings'),
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('uc_ascent_salesforce_settings_form'),
-    'access arguments' => array('administer store'),
-    'file' => 'uc_ascent_salesforce.admin.inc',
-    'type' => MENU_CALLBACK,
-  );
-  $items['admin/store/settings/uc_salesforce/configure'] = array(
-    'title' => 'API/Security Settings',
-    'description' => t('Configure the SalesForce Ascent API settings'),
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('uc_ascent_salesforce_settings_form'),
-    'access arguments' => array('administer store'),
-    'file' => 'uc_ascent_salesforce.admin.inc',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => -10);
+  $items = array ();
   
-  $items['admin/store/settings/uc_salesforce/queue'] = array(
-    'title' => 'Queue Status',
-    'page callback' => 'uc_ascent_salesforce_queue_info',
-    'access arguments' => array('administer store'),
-    'file' => 'uc_ascent_salesforce.admin.inc',
-    'weight' => 1,
-    'type' => MENU_LOCAL_TASK,
+  $items ['admin/store/settings/uc_salesforce'] = array (
+    'title' => 'SalesForce/Ascent Integration', 'description' => t('Configure the SalesForce Ascent API settings'), 'page callback' => 'drupal_get_form', 'page arguments' => array (
+    'uc_ascent_salesforce_settings_form' 
+  ), 'access arguments' => array (
+    'administer store' 
+  ), 'file' => 'uc_ascent_salesforce.admin.inc', 'type' => MENU_CALLBACK 
+  );
+  $items ['admin/store/settings/uc_salesforce/configure'] = array (
+    'title' => 'API/Security Settings', 'description' => t('Configure the SalesForce Ascent API settings'), 'page callback' => 'drupal_get_form', 'page arguments' => array (
+    'uc_ascent_salesforce_settings_form' 
+  ), 'access arguments' => array (
+    'administer store' 
+  ), 'file' => 'uc_ascent_salesforce.admin.inc', 'type' => MENU_DEFAULT_LOCAL_TASK, 'weight' => - 10 
+  );
+  
+  $items ['admin/store/settings/uc_salesforce/queue'] = array (
+    'title' => 'Queue Status', 'page callback' => 'uc_ascent_salesforce_queue_info', 'access arguments' => array (
+    'administer store' 
+  ), 'file' => 'uc_ascent_salesforce.admin.inc', 'weight' => 1, 'type' => MENU_LOCAL_TASK 
   );
   
   return $items;
 }
-	
+
 /**
  * Implementation of hook_ca_action().
  *
@@ -43,38 +36,29 @@ function uc_ascent_salesforce_menu() {
  */
 function uc_ascent_salesforce_ca_action() {
   
-  $actions['uc_ascent_salesforce_ca_action_queue_account_sync'] = array(
-    '#title' => t('Queue a salesforce<->ubercart account upsert'),
-    '#category' => t('Salesforce'),
-    '#callback' => 'uc_ascent_salesforce_ca_action_upsert_account',
-    '#arguments' => array(
-      'order' => array(
-        '#entity' => 'uc_order',
-        '#title' => t('Order'),
-      ),
-    ),
-  );
-
-  $actions['uc_ascent_salesforce_ca_action_queue_sales_order_and_lines'] = array(
-    '#title' => t('Queue a salesforce<->ubercart sales order upsert'),
-    '#category' => t('Salesforce'),
-    '#callback' => 'uc_ascent_salesforce_ca_action_upsert_sales_order',
-    '#arguments' => array(
-      'order' => array(
-        '#entity' => 'uc_order',
-        '#title' => t('Order'),
-      ),
-    ),
+  $actions ['uc_ascent_salesforce_ca_action_queue_account_sync'] = array (
+    '#title' => t('Queue a salesforce<->ubercart account upsert'), '#category' => t('Salesforce'), '#callback' => 'uc_ascent_salesforce_ca_action_upsert_account', '#arguments' => array (
+    'order' => array (
+    '#entity' => 'uc_order', '#title' => t('Order') 
+  ) 
+  ) 
   );
   
-
+  $actions ['uc_ascent_salesforce_ca_action_queue_sales_order_and_lines'] = array (
+    '#title' => t('Queue a salesforce<->ubercart sales order upsert'), '#category' => t('Salesforce'), '#callback' => 'uc_ascent_salesforce_ca_action_upsert_sales_order', '#arguments' => array (
+    'order' => array (
+    '#entity' => 'uc_order', '#title' => t('Order') 
+  ) 
+  ) 
+  );
+  
   return $actions;
 }
 
 function uc_ascent_report_error($sf, $type, $message) {
-	if ( $to = variable_get('uc_ascent_salesforce_error_notification_email', false) ) {
-	  mail($to, $type, $message);
-	}
+  if ($to = variable_get('uc_ascent_salesforce_error_notification_email', false)) {
+    mail($to, $type, $message);
+  }
 }
 
 /**
@@ -82,11 +66,11 @@ function uc_ascent_report_error($sf, $type, $message) {
  * @param UberCart order object $order
  */
 function uc_ascent_salesforce_ca_action_upsert_account($order = false) {
-  db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id) VALUES ('%s', %d)", 'ACCOUNT_UPSERT', $order->order_id);  
+  db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id) VALUES ('%s', %d)", 'ACCOUNT_UPSERT', $order->order_id);
 }
 
 function uc_ascent_salesforce_ca_action_upsert_sales_order($order = false) {
-  db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id) VALUES ('%s', %d)", 'SALESORDER_ENTER', $order->order_id);  
+  db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id) VALUES ('%s', %d)", 'SALESORDER_ENTER', $order->order_id);
 }
 
 /**
@@ -94,34 +78,36 @@ function uc_ascent_salesforce_ca_action_upsert_sales_order($order = false) {
  */
 
 function uc_ascent_salesforce_cron() {
-
-	// skip or not
-	if (variable_get('uc_ascent_salesforce_run_cron', false) == false) {
-		watchdog('salesforceascent',t('Cron run skipped because we werent enabled to run.'));
-		return false;
-	}
-	
-  include_once(drupal_get_path('module', 'uc_ascent_salesforce').'/resources/salesforce/soapclient/SforceBaseClient.php');
-	include_once(drupal_get_path('module', 'uc_ascent_salesforce').'/resources/salesforce/soapclient/SforceEnterpriseClient.php');
-	include_once(drupal_get_path('module', 'uc_ascent_salesforce').'/uc_ascent_salesforce.inc');
   
-	ini_set("soap.wsdl_cache_enabled", 0); //ensure caching is off, we dont call it enough to worry  
-	
-  $xml_wsdl_base_dir = drupal_get_path('module', 'uc_ascent_salesforce').'/resources';
+  // skip or not
+  if (variable_get('uc_ascent_salesforce_run_cron', false) == false) {
+    watchdog('salesforceascent', t('Cron run skipped because we werent enabled to run.'));
+    return false;
+  }
+  
+  include_once (drupal_get_path('module', 'uc_ascent_salesforce') . '/resources/salesforce/soapclient/SforceBaseClient.php');
+  include_once (drupal_get_path('module', 'uc_ascent_salesforce') . '/resources/salesforce/soapclient/SforceEnterpriseClient.php');
+  include_once (drupal_get_path('module', 'uc_ascent_salesforce') . '/uc_ascent_salesforce.inc');
+  
+  ini_set("soap.wsdl_cache_enabled", 0); //ensure caching is off, we dont call it enough to worry  
+  
+
+  $xml_wsdl_base_dir = drupal_get_path('module', 'uc_ascent_salesforce') . '/resources';
   
   // initialize the salesforce ascent/sf object
   $sf = new AscentSFClient();
   
-  $sf->createConnection($xml_wsdl_base_dir.'/'.variable_get('uc_ascent_salesforce_wsdl_salesforce',''));
-  $sf->createAscentConnection($xml_wsdl_base_dir.'/'.variable_get('uc_ascent_salesforce_wsdl_ascent',''));  
+  $sf->createConnection($xml_wsdl_base_dir . '/' . variable_get('uc_ascent_salesforce_wsdl_salesforce', ''));
+  $sf->createAscentConnection($xml_wsdl_base_dir . '/' . variable_get('uc_ascent_salesforce_wsdl_ascent', ''));
   $username = variable_get('uc_ascent_salesforce_username', '');
-  $password = variable_get('uc_ascent_salesforce_password', '').variable_get('uc_ascent_salesforce_token', '');
-
-  try {  
-     $result = $sf->login($username, $password);
-  }  catch ( SoapFault $err ) {
-  	 uc_ascent_report_error($sf, "Authenticating with SalesForce", $err);
-  	 return false;      
+  $password = variable_get('uc_ascent_salesforce_password', '') . variable_get('uc_ascent_salesforce_token', '');
+  
+  try {
+    $result = $sf->login($username, $password);
+  }
+  catch (SoapFault $err) {
+    uc_ascent_report_error($sf, "Authenticating with SalesForce", $err);
+    return false;
   }
   
   uc_ascent_salesforce_process_jobs($sf);
@@ -133,93 +119,88 @@ function uc_ascent_salesforce_cron() {
  * @param sfClient object $sf
  * @param integer $parent jobs have basic hierarchy
  */
-function uc_ascent_salesforce_process_jobs($sf, $parent =0 ) {
-
-	// run each order
-	// if a parent is specified use that, else just process as usual
-	if($parent) {
+function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
+  
+  // run each order
+  // if a parent is specified use that, else just process as usual
+  if ($parent) {
     $db_result = db_query("SELECT qid, queue_function, order_id, extra_data, parent_qid FROM {uc_sf_queue} WHERE q_status = 0 AND parent_qid = %d ORDER BY qid", $parent);
-	} else {
-		$db_result = db_query("SELECT qid, queue_function, order_id, extra_data, parent_qid FROM {uc_sf_queue} WHERE q_status = 0 ORDER BY qid");
-	}
-  while( $row = db_fetch_array($db_result)) {
-    $order = uc_order_load($row['order_id']);
+  }
+  else {
+    $db_result = db_query("SELECT qid, queue_function, order_id, extra_data, parent_qid FROM {uc_sf_queue} WHERE q_status = 0 ORDER BY qid");
+  }
+  while ($row = db_fetch_array($db_result)) {
+    $order = uc_order_load($row ['order_id']);
     $time_start = time();
     $request = "";
-    $response = "";   
-
+    $response = "";
+    
     try {
-      switch($row['queue_function']) {    
+      switch ($row ['queue_function']) {
         case 'ACCOUNT_UPSERT':
-          if ($id = _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) ) {
+          if ($id = _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order)) {
             // record the status and set the flag as 1 = processed
-            db_query("UPDATE {uc_sf_queue} SET extra_data = '%s', q_status=1 WHERE qid='%d'", serialize($id), $row['qid']);
-          }         
-        break;
+            db_query("UPDATE {uc_sf_queue} SET extra_data = '%s', q_status=1 WHERE qid='%d'", serialize($id), $row ['qid']);
+          }
+          break;
         case 'SALESORDER_ENTER':
           // grab the SF contact ID from any previous update to this 
           $sf_id = unserialize(db_result(db_query("SELECT extra_data FROM uc_sf_queue WHERE order_id = %d AND queue_function = 'ACCOUNT_UPSERT' ", $order->order_id)));
-          if($sf_id) {
-            $sf_contact_id = $sf_id['contactId'];
-            $sf_account_id = $sf_id['accountId'];            
+          if ($sf_id) {
+            $sf_contact_id = $sf_id ['contactId'];
+            $sf_account_id = $sf_id ['accountId'];
             if ($result = _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf_contact_id)) {
               $response = $sf->ascent->__getLastResponse();
               $request = $sf->ascent->__getLastRequest();
-            	// if this worked, record the ID returned from salesforce
-              db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row['qid']);
+              // if this worked, record the ID returned from salesforce
+              db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row ['qid']);
               // Now for each product, we need to register a lineitem addition
-              foreach($order->products as $order_product) {
-                db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id, parent_qid, extra_data) VALUES ('%s', %d, %d, '%s')",
-                           'SALESORDER_ENTER_ORDERLINES', 
-                           $order->order_id, 
-                           $row['qid'],
-                           serialize($order_product));	
-              }                            
+              foreach ($order->products as $order_product) {
+                db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id, parent_qid, extra_data) VALUES ('%s', %d, %d, '%s')", 'SALESORDER_ENTER_ORDERLINES', $order->order_id, $row ['qid'], serialize($order_product));
+              }
             }
-          } 
-        break;
+          }
+          break;
         case 'SALESORDER_ENTER_ORDERLINES':
-        
-        	$order_product = unserialize($row['extra_data']);        	
-        	if($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row['parent_qid'])) ) {
+          
+          $order_product = unserialize($row ['extra_data']);
+          if ($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row ['parent_qid']))) {
             if ($result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_product)) {
               $response = $sf->ascent->__getLastResponse();
               $request = $sf->ascent->__getLastRequest();
-            
+              
               // if this worked, record the ID returned from salesforce
-              db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row['qid']);
+              db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row ['qid']);
             }
-        	}
-        	//
-        break;
+          }
+          //
+          break;
       }
-
-	    $time_end = time();
-	    // update the last attempt time
-	    db_query("UPDATE {uc_sf_queue} SET request_recent_time = %d where qid = %d", $time_end, $row['qid']);
-	    
-	    // record this into the queue log
-	    db_query("INSERT INTO {uc_sf_queue_log} 
+      
+      $time_end = time();
+      // update the last attempt time
+      db_query("UPDATE {uc_sf_queue} SET request_recent_time = %d where qid = %d", $time_end, $row ['qid']);
+      
+      // record this into the queue log
+      db_query("INSERT INTO {uc_sf_queue_log} 
 	                (qid, request_start_time, request_end_time, 
 	                  request_post, request_reply, result_status)
-	                VALUES (%d, %d, %d, '%s', '%s',%d)", $row['qid'], $time_start, $time_end, 
-	                 $request, $response, $result); 
-
-	      
-    } catch ( SoapFault $err ) {
+	                VALUES (%d, %d, %d, '%s', '%s',%d)", $row ['qid'], $time_start, $time_end, $request, $response, $result);
+    
+    }
+    catch (SoapFault $err) {
       uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", $err);
-              $response = $sf->ascent->__getLastResponse();
-              $request = $sf->ascent->__getLastRequest();
-       db_query("INSERT INTO {uc_sf_queue_log} 
+      $response = $sf->ascent->__getLastResponse();
+      $request = $sf->ascent->__getLastRequest();
+      db_query("INSERT INTO {uc_sf_queue_log} 
                   (qid, request_start_time, request_end_time, 
                     request_post, request_reply, result_status)
-                  VALUES (%d, %d, %d, '%s', '%s',%d)", $row['qid'], $time_start, $time_end, 
-                   $request, $response, $result); 
-      
+                  VALUES (%d, %d, %d, '%s', '%s',%d)", $row ['qid'], $time_start, $time_end, $request, $response, $result);
+    
     }
-
+    
     // process any children of this
-    uc_ascent_salesforce_process_jobs($sf, $row['qid']);
+    uc_ascent_salesforce_process_jobs($sf, $row ['qid']);
   }
 }
 
