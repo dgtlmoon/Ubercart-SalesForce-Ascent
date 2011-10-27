@@ -8,9 +8,13 @@
 function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_product) {
   //addSOLine(string soName,string itemName,double price, double quantity,double discount)
   
+	$id = _uc_ascent_get_product_ids($sf,$order_product->model );
+	if(!$id) {
+		return false;
+	}
 
   $discount = 0.00; //@todo integrate discounts when vouchers are in use
-  if ($result = $sf->addSalesOrderLineItem($soName, $order_product->model, $order_product->price, $order_product->qty, $discount)) {
+  if ($result = $sf->addSalesOrderLineItem($soName, $id , $order_product->price, $order_product->qty, $discount)) {
     return $result;
   }
   
@@ -47,6 +51,20 @@ function _uc_ascent_get_order_total($order_id) {
   return db_result(db_query("SELECT sum(amount) FROM {uc_order_line_items} WHERE order_id =%d", $order_id));
 }
 
+function _uc_ascent_get_product_ids($sf, $product_id) {
+	static $ids;	
+	
+	if($ids[$product_id]) {
+		return $ids[$product_id];
+	}
+	
+  if ( $result = $sf->queryAll("Select Id from PBSI__PBSI_item__c where Name = 'SEEDBK001000TB'") ) {
+  	$ids[$product_id] = $result->records[0]->Id;
+  }
+	
+  return $ids[$product_id];
+	
+}
 /**
  * Create the entry in salesforce, check to see if theres a contact by this name, 
  * if not, create an account and a contact (linked to this account)

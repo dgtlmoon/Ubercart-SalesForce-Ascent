@@ -79,6 +79,7 @@ function uc_ascent_salesforce_ca_action_upsert_sales_order($order = false) {
 
 function uc_ascent_salesforce_cron() {
   
+	
   // skip or not
   if (variable_get('uc_ascent_salesforce_run_cron', false) == false) {
     watchdog('salesforceascent', t('Cron run skipped because we werent enabled to run.'));
