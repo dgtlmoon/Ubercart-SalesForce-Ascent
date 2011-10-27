@@ -97,7 +97,7 @@
       <xsd:element name="Phone" type="xsd:string" nillable="true"/>
       <xsd:element name="shippingStreet" type="xsd:string" nillable="true"/>
       <xsd:element name="shippingCity" type="xsd:string" nillable="true"/>
-      <xsd:element name="shippingstate" type="xsd:string" nillable="true"/>
+      <xsd:element name="shippingState" type="xsd:string" nillable="true"/>
       <xsd:element name="shippingCode" type="xsd:string" nillable="true"/>
       <xsd:element name="shippingCountry" type="xsd:string" nillable="true"/>
       <xsd:element name="billingStreet" type="xsd:string" nillable="true"/>
@@ -159,8 +159,8 @@
    <xsd:element name="addSO">
     <xsd:complexType>
      <xsd:sequence>
-      <xsd:element name="AccountName" type="xsd:string" nillable="true"/>
-      <xsd:element name="ContactName" type="xsd:string" nillable="true"/>
+      <xsd:element name="AccountId" type="xsd:string" nillable="true"/>
+      <xsd:element name="contactId" type="xsd:string" nillable="true"/>
       <xsd:element name="shippingInstructions" type="xsd:string" nillable="true"/>
       <xsd:element name="ShippingCost" type="xsd:double" nillable="true"/>
       <xsd:element name="salesTax" type="xsd:double" nillable="true"/>
@@ -178,8 +178,8 @@
    <xsd:element name="addSOLine">
     <xsd:complexType>
      <xsd:sequence>
-      <xsd:element name="soName" type="xsd:string" nillable="true"/>
-      <xsd:element name="itemName" type="xsd:string" nillable="true"/>
+      <xsd:element name="soId" type="xsd:string" nillable="true"/>
+      <xsd:element name="itemId" type="xsd:string" nillable="true"/>
       <xsd:element name="price" type="xsd:double" nillable="true"/>
       <xsd:element name="quantity" type="xsd:double" nillable="true"/>
       <xsd:element name="discount" type="xsd:double" nillable="true"/>
@@ -248,10 +248,10 @@
      <xsd:sequence>
       <xsd:element name="soName" type="xsd:string" nillable="true"/>
       <xsd:element name="itemName" type="xsd:string" nillable="true"/>
-      <xsd:element name="newitemname" type="xsd:string" nillable="true"/>
+      <xsd:element name="newitemName" type="xsd:string" nillable="true"/>
       <xsd:element name="newprice" type="xsd:double" nillable="true"/>
-      <xsd:element name="newquantity" type="xsd:double" nillable="true"/>
-      <xsd:element name="newdiscount" type="xsd:double" nillable="true"/>
+      <xsd:element name="newQuantity" type="xsd:double" nillable="true"/>
+      <xsd:element name="newDiscount" type="xsd:double" nillable="true"/>
      </xsd:sequence>
     </xsd:complexType>
    </xsd:element>
