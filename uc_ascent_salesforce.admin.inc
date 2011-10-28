@@ -69,13 +69,13 @@ function uc_ascent_salesforce_queue_info() {
   ), array (
     'data' => t('Function'), 'field' => 'queue_function' 
   ), array (
-    'data' => t('Order ID'), 'field' => 'order_id', 'sort' => 'dsc' 
+    'data' => t('Order ID'), 'field' => 'order_id', 'sort' => 'desc' 
   ), array (
     'data' => t('Queue Status'), 'field' => 'q_status' 
   ), array (
     'data' => t('Processed Time'), 'field' => 'recent_request_time' 
   ), array (
-    'data' => t('SF/Ascent ObjectID'), 'field' => 'sf_id' 
+    'data' => t(''),  
   ) 
   );
   
@@ -83,7 +83,12 @@ function uc_ascent_salesforce_queue_info() {
   $rows = array ();
   while ($queue_item = db_fetch_object($result)) {
     $rows [] = array (
-      $queue_item->qid, check_plain($queue_item->queue_function), l($queue_item->order_id, 'admin/store/orders/' . $queue_item->order_id), ! $queue_item->q_status ? t('Waiting') : t('Complete'), $queue_item->request_recent_time, $queue_item->sf_id 
+      $queue_item->qid, 
+      check_plain($queue_item->queue_function), 
+      l($queue_item->order_id, 'admin/store/orders/' . $queue_item->order_id), 
+      ! $queue_item->q_status ? t('Waiting') : t('Complete'), 
+      $queue_item->request_recent_time, 
+      l('view transaction','admin/store/settings/uc_salesforce/queue/'.$queue_item->qid)
     );
   }
   
@@ -102,7 +107,25 @@ function uc_ascent_salesforce_queue_info() {
   return $output;
 }
 
-
-
-
   
+
+function uc_ascent_salesforce_queue_item_info($qid) {
+	
+	
+	$item = db_fetch_array(db_query("SELECT * from {uc_sf_queue_log} WHERE qid=%d", $qid));
+  $form['request'] = array('#type'=>'textarea', 
+                           '#cols'=>100, 
+                           '#rows'=>15, 
+                           '#value'=>$item['request_post'],
+                           '#title'=>'XML Request/Post' ); 
+  
+  $form['replay'] = array('#type'=>'textarea', 
+                           '#cols'=>100, 
+                           '#rows'=>15, 
+                           '#value'=>$item['request_reply'],
+                           '#title'=>'XML Reply' ); 
+  
+  return drupal_render($form);
+}
+
+

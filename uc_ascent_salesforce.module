@@ -23,7 +23,18 @@ function uc_ascent_salesforce_menu() {
     'administer store' 
   ), 'file' => 'uc_ascent_salesforce.admin.inc', 'weight' => 1, 'type' => MENU_LOCAL_TASK 
   );
+
+  $items ['admin/store/settings/uc_salesforce/queue/%'] = array (
+    'title' => 'Queue Status', 
+    'page callback' => 'uc_ascent_salesforce_queue_item_info',
+    'page arguments' => array(5),    
+    'access arguments' => array ('administer store'),
+    'file' => 'uc_ascent_salesforce.admin.inc', 
+    'weight' => 1, 
+    'type' => MENU_CALLBACK 
+  );
   
+    
   return $items;
 }
 
