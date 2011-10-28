@@ -217,4 +217,21 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
 }
 
 
+function uc_ascent_salesforce_form_alter(&$form, $form_state, $form_id) {
+
+	// the Ascent/Salesforce interface has a limit of 255 chars for this
+  if ($form_id == 'uc_cart_checkout_form') {
+    $form['panes']['comments']['comments']['#description'] = t('Maximum length 255 characters');
+    $form['#validate'][] = 'uc_ascent_salesforce_form_validate';
+  } 
+  
+}
+
+function uc_ascent_salesforce_form_validate($form, &$form_state) {
+
+	if (strlen($form_state['values']['panes']['comments']['comments']) > 254) {
+    form_set_error('comments', t('Comment is too long, only 255 characters are alowed here, you have %length', array('%length'=>strlen($form_state['values']['panes']['comments']['comments']))));
+  }
+	
+}
 
