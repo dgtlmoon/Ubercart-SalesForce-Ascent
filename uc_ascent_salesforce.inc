@@ -58,7 +58,7 @@ function _uc_ascent_get_product_ids($sf, $product_id) {
 		return $ids[$product_id];
 	}
 	
-  if ( $result = $sf->queryAll("Select Id from PBSI__PBSI_item__c where Name = 'SEEDBK001000TB'") ) {
+  if ( $result = $sf->queryAll("Select Id from PBSI__PBSI_item__c where Name = '{$product_id}'") ) {
   	$ids[$product_id] = $result->records[0]->Id;
   }
 	
