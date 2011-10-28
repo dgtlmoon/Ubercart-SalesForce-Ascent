@@ -79,7 +79,10 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
     return false;
   }
   
-  $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE FirstName = '{$order->delivery_first_name}' AND LastName = '{$order->delivery_last_name}'");
+  $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
+                            FirstName = '{$order->delivery_first_name}' 
+                            AND LastName = '{$order->delivery_last_name}'
+                            AND Email = '{$order->primary_email}'");
   
   if ($result->size == 0) {
     $delivery_zone = uc_get_zone_code($order->delivery_zone);
@@ -95,7 +98,19 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
     
 
     $record = array (
-      'BillingCity' => $order->billing_city, 'BillingCountry' => $billing_country [0] ['country_name'], 'BillingPostalCode' => $order->billing_postal_code, 'BillingState' => $billing_zone, 'BillingStreet' => $order->billing_street1 . ' ' . $order->billing_street2, 'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}", 'Name' => $order->billing_first_name . ' ' . $order->billing_last_name, 'Phone' => $order->billing_phone, 'ShippingCity' => $order->billing_city, 'ShippingState' => $delivery_zone, 'ShippingCountry' => $delivery_country [0] ['country_name'], 'ShippingPostalCode' => $order->delivery_postal_code, 'ShippingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2 
+      'BillingCity' => $order->billing_city, 
+      'BillingCountry' => $billing_country [0] ['country_name'], 
+      'BillingPostalCode' => $order->billing_postal_code, 
+      'BillingState' => $billing_zone, 
+      'BillingStreet' => $order->billing_street1 . ' ' . $order->billing_street2, 
+      'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}", 
+      'Name' => ucfirst(strtolower($order->billing_first_name)).' '.ucfirst(strtolower($order->billing_last_name)),    
+      'Phone' => $order->billing_phone, 
+      'ShippingCity' => $order->billing_city, 
+      'ShippingState' => $delivery_zone, 
+      'ShippingCountry' => $delivery_country [0] ['country_name'], 
+      'ShippingPostalCode' => $order->delivery_postal_code, 
+      'ShippingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2 
     );
     
     $response = $sf->create(array (
@@ -104,7 +119,18 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
     $return ['accountId'] = $response [0]->id;
     
     $record = array (
-      'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}", 'Email' => $order->primary_email, 'Firstname' => $order->delivery_first_name, 'Homephone' => $order->delivery_phone, 'Lastname' => $order->delivery_last_name, 'MailingCity' => $order->delivery_city, 'MailingState' => $delivery_zone, 'MailingCountry' => $delivery_country [0] ['country_name'], 'MailingPostalCode' => $order->delivery_postal_code, 'MailingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2, 'MobilePhone' => $order->delivery_phone, 'AccountId' => $response [0]->id 
+      'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}", 
+      'Email' => $order->primary_email, 
+      'Firstname' => ucfirst(strtolower($order->delivery_first_name)), 
+      'Homephone' => $order->delivery_phone, 
+      'Lastname' => ucfirst(strtolower($order->delivery_last_name)), 
+      'MailingCity' => $order->delivery_city, 
+      'MailingState' => $delivery_zone, 
+      'MailingCountry' => $delivery_country [0] ['country_name'], 
+      'MailingPostalCode' => $order->delivery_postal_code, 
+      'MailingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2, 
+      'MobilePhone' => $order->delivery_phone, 
+      'AccountId' => $response [0]->id 
     );
     
     $response = $sf->create(array (
