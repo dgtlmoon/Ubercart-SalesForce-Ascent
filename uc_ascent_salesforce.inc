@@ -99,8 +99,6 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
     ));
     
     // create the Account for this
-    
-
     $record = array (
       'BillingCity' => $order->billing_city, 
       'BillingCountry' => $billing_country [0] ['country_name'], 
@@ -114,7 +112,20 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
       'ShippingState' => $delivery_zone, 
       'ShippingCountry' => $delivery_country [0] ['country_name'], 
       'ShippingPostalCode' => $order->delivery_postal_code, 
-      'ShippingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2 
+      'ShippingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2,
+      // Extra custom fields
+      'Type' => 'Customer',
+      'Sub_Type__c' => 'Consumer Direct:Online',
+      'PBSI__Payment_Terms__c' => 'Cash',
+      'Current_Payment_Terms__c' => 'Cash',
+      'c2g__CODAAccountsReceivableControl__c' => 'Accounts Receivable',
+      'c2g__CODAAccountsPayableControl__c' => 'Accounts Payable',
+      'c2g__CODADimension1__c' => 'Consumer Products',
+      'c2g__CODASalesTaxStatus__c' => 'Exempt for Qualifying Products',
+      'c2g__CODATaxCode1__c' => 'FRE',
+      'c2g__CODATaxCalculationMethod__c' => 'Gross',
+      'c2g__CODAInputVATCode__c' => 'FRE',
+      'c2g__CODAOutputVATCode__c' => 'FRE',
     );
     
     $response = $sf->create(array (
@@ -134,7 +145,10 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
       'MailingPostalCode' => $order->delivery_postal_code, 
       'MailingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2, 
       'MobilePhone' => $order->delivery_phone, 
-      'AccountId' => $response [0]->id 
+      'AccountId' => $response [0]->id,
+      'Customer_Type__c' => 'Consumer Direct: Online',
+    
+    
     );
     
     $response = $sf->create(array (
@@ -359,8 +373,12 @@ class AscentSFClient extends SforceBaseClient {
     try {
       
       $values = array (
-        'AccountId' => $accountId, 'contactId' => $contactId, 'shippingInstructions' => strip_tags($shippingInstructions), 'shippingCost' => $shippingCost, 'salesTax' => 0.00, // @todo what is salestax based on?
-'discount' => 0.00  // @todo integrate with vouchers?
+        'AccountId' => $accountId, 
+        'contactId' => $contactId, 
+        'shippingInstructions' => strip_tags($shippingInstructions), 
+        'shippingCost' => $shippingCost, 
+        'salesTax' => 0.00, // @todo what is salestax based on?
+        'discount' => 0.00  // @todo integrate with vouchers?
       );
       
       $result = $this->ascent->addSO($values);
