@@ -7,16 +7,17 @@
  */
 function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_product) {
   //addSOLine(string soName,string itemName,double price, double quantity,double discount)
-  
 	$id = _uc_ascent_get_product_ids($sf,$order_product->model );
 	if(!$id) {
 		return false;
 	}
 
   $discount = 0.00; //@todo integrate discounts when vouchers are in use
+  
   if ($result = $sf->addSalesOrderLineItem($soName, $id , $order_product->price, $order_product->qty, $discount)) {
     return $result;
   }
+  
   
   return false;
 }
@@ -59,9 +60,12 @@ function _uc_ascent_get_product_ids($sf, $product_id) {
 	}
 	
   if ( $result = $sf->queryAll("Select Id from PBSI__PBSI_item__c where Name = '{$product_id}'") ) {
+    if(count($result->records) == 0) {
+	uc_ascent_report_error($sf, 'Getting product ID', "Product ID $product_id does not exist in SalesForce/Ascent");
+    }
   	$ids[$product_id] = $result->records[0]->Id;
-  }
-	
+  } 
+
   return $ids[$product_id];
 	
 }
