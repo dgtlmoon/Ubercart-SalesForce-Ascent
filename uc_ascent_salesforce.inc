@@ -26,10 +26,9 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order = false, $sf_account
   
   $contactName = $order->delivery_first_name . ' ' . $order->delivery_last_name;
   $shippingInstructions = _uc_ascent_get_all_order_comments($order->order_id);
-  $shippingCost = _uc_ascent_get_order_total($order->order_id);
+  $shippingCost = _uc_ascent_get_order_total($order->order_id); //@todo shipping cost or total cost?
   $salesTax = 0; // @todo unsure
   $discount = 0; // @todo integrate with vouchers when that is complete	
-  
 
   if ($result = $sf->addSalesOrder($sf_account_id, $sf_contact_id, $shippingInstructions, $shippingCost, $salesTax, $discount)) {
     return $result;

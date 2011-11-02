@@ -133,7 +133,6 @@ function uc_ascent_record_queue($qid, $time_start, $time_end, $request, $respons
                   VALUES (%d, %d, %d, '%s', '%s',%d)", $qid, $time_start, $time_end, $request, $response, $result);
 }
 
-
 /**
  * Actual job runner
  * @param sfClient object $sf
@@ -161,8 +160,9 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
           if ($id = _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order)) {
             // record the status and set the flag as 1 = processed
             db_query("UPDATE {uc_sf_queue} SET extra_data = '%s', q_status=1 WHERE qid='%d'", serialize($id), $row ['qid']);
-          } else {
-	    uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "Failed to add account");
+          }
+          else {
+            uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "Failed to add account");
           }
           break;
         case 'SALESORDER_ENTER':
@@ -179,15 +179,16 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
                 db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id, parent_qid, extra_data) VALUES ('%s', %d, %d, '%s')", 'SALESORDER_ENTER_ORDERLINES', $order->order_id, $row ['qid'], serialize($order_product));
               }
             }
-          } else {
+          }
+          else {
             $response = $sf->ascent->__getLastResponse();
             $request = $sf->ascent->__getLastRequest();
-	    uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER was called but no data was found (ADD ACCOUNT failed?)");
+            uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER was called but no data was found (ADD ACCOUNT failed?)");
           }
           break;
         case 'SALESORDER_ENTER_ORDERLINES':
-          if (!$order_product = unserialize($row ['extra_data'])) {
-	    uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but no data was found (SALESORDER_ENTER failed?)");
+          if (! $order_product = unserialize($row ['extra_data'])) {
+            uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but no data was found (SALESORDER_ENTER failed?)");
           }
           if ($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row ['parent_qid']))) {
             if ($result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_product)) {
@@ -195,13 +196,14 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
               $request = $sf->ascent->__getLastRequest();
               // if this worked, record the ID returned from salesforce
               db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row ['qid']);
-            } else {
+            }
+            else {
               $response = $sf->ascent->__getLastResponse();
               $request = $sf->ascent->__getLastRequest();
-      	    uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but expected result was not found");
-
+              uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but expected result was not found");
+            
             }
-          } 
+          }
           break;
       }
       
@@ -210,14 +212,14 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
       db_query("UPDATE {uc_sf_queue} SET request_recent_time = %d where qid = %d", $time_end, $row ['qid']);
       
       // record this into the queue log
-      uc_ascent_record_queue($row['qid'], $time_start, $time_end, $request, $response, $result);
-
+      uc_ascent_record_queue($row ['qid'], $time_start, $time_end, $request, $response, $result);
+    
     }
     catch (SoapFault $err) {
       uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", $err);
       $response = $sf->ascent->__getLastResponse();
       $request = $sf->ascent->__getLastRequest();
-      uc_ascent_record_queue($row['qid'], $time_start, $time_end, $request, $response, $result);
+      uc_ascent_record_queue($row ['qid'], $time_start, $time_end, $request, $response, $result);
     
     }
     
