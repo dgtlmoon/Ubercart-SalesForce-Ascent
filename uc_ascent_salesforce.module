@@ -188,18 +188,7 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
                                                      'SALESORDER_AUX_FIELDS', 
                                                       $order->order_id, 
                                                       $row['qid']
-                                                      );
-              
-              // Now add the shipping as a line item
-              db_query("INSERT INTO {uc_sf_queue} (queue_function, 
-                                                   order_id, 
-                                                   parent_qid, 
-                                                   sf_id) 
-                                                   VALUES ('%s', %d, %d, '%s')", 
-                                                     'SALESORDER_ENTER_SHIPLINE', 
-                                                      $order->order_id, 
-                                                      $row['qid'], 
-                                                      serialize($order_product));
+                                                      );              
               $response = $sf->ascent->__getLastResponse();
               $request = $sf->ascent->__getLastRequest();                                                      
             }
@@ -238,12 +227,28 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
               $request = $sf->ascent->__getLastRequest();
               // if this worked, record the ID returned from salesforce
               db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $orderline_result, $row['qid']);
+
+              // if all the orderlines have been entered, it's time to push in the final orderline for shipping              
+              $incomplete_count = db_result(db_query("SELECT count(*) AS c FROM {uc_sf_queue} WHERE order_id = %d 
+                                                        AND q_status = 0 
+                                                        AND queue_function = 'SALESORDER_ENTER_ORDERLINES'"));
+              if ($incomplete_count == 0) {              
+                // Now add the shipping as a line item
+                db_query("INSERT INTO {uc_sf_queue} (queue_function, 
+                                                     order_id, 
+                                                     parent_qid, 
+                                                     sf_id) 
+                                                     VALUES ('%s', %d, %d, '%s')", 
+                                                       'SALESORDER_ENTER_SHIPLINE', 
+                                                        $order->order_id, 
+                                                        $row['qid'], 
+                                                        serialize($order_product));
+              }                         
             }
             else {
               $response = $sf->ascent->__getLastResponse();
               $request = $sf->ascent->__getLastRequest();
-              uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but expected result was not found");
-            
+              uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but expected result was not found");            
             }
           }
           break;
