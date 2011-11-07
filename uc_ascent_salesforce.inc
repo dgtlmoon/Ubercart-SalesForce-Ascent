@@ -41,9 +41,9 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf
   }
     
   if($order->currency == 'AUD') {
-    // shipping total includes 10% of the tax, so take that out and adjust
-    $salesTax = $shipping_total*0.10;
-    $shipping_total = ($shipping_total - $salesTax);
+    // shipping total includes 10% of the tax
+    // so record that
+    $salesTax = 10;
   }
 
   $discount = 0; // @todo integrate with vouchers when that is complete	
@@ -53,8 +53,7 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf
                                     $shippingInstructions, 
                                     $shipping_total, 
                                     $salesTax, 
-                                    $discount,
-                                    $order->order_id)) {
+                                    $discount)) {
     return $result;
   }
   return false;
@@ -404,7 +403,7 @@ class AscentSFClient extends SforceBaseClient {
    * </xsd:complexType>
    * </xsd:element>
    */
-  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost=0.00, $salesTax =0.00, $discount=0.00, $order_id) {
+  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost=0.00, $salesTax =0.00, $discount=0.00) {
     
     $this->_setSessionHeader($this->ascent);
     
@@ -414,8 +413,8 @@ class AscentSFClient extends SforceBaseClient {
         'AccountId' => $accountId, 
         'contactId' => $contactId, 
         'shippingInstructions' => strip_tags($shippingInstructions), 
-        'shippingCost' => $shippingCost, 
-        'salesTax' => $salesTax, // @todo what is salestax based on?
+        'ShippingCost' => $shippingCost, 
+        'salesTax' => $salesTax, 
         'discount' => $discount,  // @todo integrate with vouchers? 
       );
       
