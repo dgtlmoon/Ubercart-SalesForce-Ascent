@@ -22,18 +22,36 @@ function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_
   return false;
 }
 
-function _uc_ascent_salesforce_salesforce_enter($sf, $order = false, $sf_account_id, $sf_contact_id) {
+function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf_contact_id) {
   
   $contactName = $order->delivery_first_name . ' ' . $order->delivery_last_name;
   $shippingInstructions = _uc_ascent_get_all_order_comments($order->order_id);
-  $shippingCost = _uc_ascent_get_order_total($order->order_id); //@todo shipping cost or total cost?
-  $salesTax = 0; // @todo unsure
+
+  // SalesTax per Teresa's rules
+  // Items are sales tax free, except in australia
+  // where the shipping amount attracts a 10% tax
+  $shipping_items = uc_order_load_line_items($order, true);
+  $shipping_total = 0.00;
+  $salesTax = 0.00;
+  
+  foreach($shipping_items as $item) {
+    if($item['type'] == 'shipping') {
+      $shipping_total += $item['amount'];
+    }
+  }
+    
+  if($order->currency == 'AUD') {
+    // shipping total includes 10% of the tax, so take that out and adjust
+    $salesTax = $shipping_total*0.10;
+    $shipping_total = ($shipping_total - $salesTax);
+  }
+
   $discount = 0; // @todo integrate with vouchers when that is complete	
 
   if ($result = $sf->addSalesOrder( $sf_account_id, 
                                     $sf_contact_id, 
                                     $shippingInstructions, 
-                                    $shippingCost, 
+                                    $shipping_total, 
                                     $salesTax, 
                                     $discount,
                                     $order->order_id)) {
@@ -346,8 +364,11 @@ class AscentSFClient extends SforceBaseClient {
     try {
       
       $values = array (
-        'soId' => $soId, 'itemId' => $itemId, 'price' => $price, //@todo each is it?
-'quantity' => $quantity, 'discount' => $discount 
+        'soId' => $soId, 
+        'itemId' => $itemId, 
+        'price' => $price, //@todo each is it?
+        'quantity' => $quantity, 
+        'discount' => $discount 
       );
       
       $result = $this->ascent->addSOLine($values);
@@ -383,7 +404,7 @@ class AscentSFClient extends SforceBaseClient {
    * </xsd:complexType>
    * </xsd:element>
    */
-  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost, $salesTax, $discount, $order_id) {
+  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost=0.00, $salesTax =0.00, $discount=0.00, $order_id) {
     
     $this->_setSessionHeader($this->ascent);
     
@@ -394,8 +415,8 @@ class AscentSFClient extends SforceBaseClient {
         'contactId' => $contactId, 
         'shippingInstructions' => strip_tags($shippingInstructions), 
         'shippingCost' => $shippingCost, 
-        'salesTax' => 0.00, // @todo what is salestax based on?
-        'discount' => 0.00,  // @todo integrate with vouchers? 
+        'salesTax' => $salesTax, // @todo what is salestax based on?
+        'discount' => $discount,  // @todo integrate with vouchers? 
       );
       
       $result = $this->ascent->addSO($values);
