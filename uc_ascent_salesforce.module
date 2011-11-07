@@ -156,6 +156,8 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
       switch ($row['queue_function']) {
         case 'ACCOUNT_UPSERT':
           if ($id = _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order)) {
+           $response = $sf->sforce->__getLastResponse();
+           $request = $sf->sforce->__getLastRequest();            
             // record the status and set the flag as 1 = processed
             db_query("UPDATE {uc_sf_queue} SET extra_data = '%s', q_status=1 WHERE qid='%d'", serialize($id), $row['qid']);
           }
@@ -188,6 +190,8 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
                                                       $order->order_id, 
                                                       $row['qid'], 
                                                       serialize($order_product));
+              $response = $sf->ascent->__getLastResponse();
+              $request = $sf->ascent->__getLastRequest();                                                      
             }
           }
           else {
