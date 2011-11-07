@@ -117,7 +117,7 @@ function uc_ascent_salesforce_cron() {
     uc_ascent_report_error($sf, "Authenticating with SalesForce", $err);
     return false;
   }
-  
+
   uc_ascent_salesforce_process_jobs($sf);
   $sf->logout();
 }
@@ -180,6 +180,16 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
               foreach ($order->products as $order_product) {
                 db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id, parent_qid, extra_data) VALUES ('%s', %d, %d, '%s')", 'SALESORDER_ENTER_ORDERLINES', $order->order_id, $row['qid'], serialize($order_product));
               }
+              // Queue the auxillery update of a salesOrder (extra fields)
+              db_query("INSERT INTO {uc_sf_queue} (queue_function, 
+                                                   order_id, 
+                                                   parent_qid) 
+                                                   VALUES ('%s', %d, %d )", 
+                                                     'SALESORDER_AUX_FIELDS', 
+                                                      $order->order_id, 
+                                                      $row['qid']
+                                                      );
+              
               // Now add the shipping as a line item
               db_query("INSERT INTO {uc_sf_queue} (queue_function, 
                                                    order_id, 
@@ -200,6 +210,24 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
             uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER was called but no data was found (ADD ACCOUNT failed?)");
           }
           break;
+        case 'SALESORDER_AUX_FIELDS':
+          if ($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row['parent_qid']))) {
+            $order_product = uc_order_load($row['order_id']);
+            if ($aux_result = _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $sf_order_id, $order_product)) {
+              $response = $sf->ascent->__getLastResponse();
+              $request = $sf->ascent->__getLastRequest();
+              // if this worked, record the ID returned from salesforce
+              db_query("UPDATE {uc_sf_queue} SET q_status=1 WHERE qid= %d ", $row['qid']);
+            }
+            else {
+              $response = $sf->ascent->__getLastResponse();
+              $request = $sf->ascent->__getLastRequest();
+              uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but expected result was not found");
+            
+            }
+          }
+          
+        break;
         case 'SALESORDER_ENTER_ORDERLINES':
           if (! $order_product = unserialize($row['extra_data'])) {
             uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but no data was found (SALESORDER_ENTER failed?)");

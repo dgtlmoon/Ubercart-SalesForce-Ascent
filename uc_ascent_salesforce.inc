@@ -54,10 +54,45 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf
                                     $shipping_total, 
                                     $salesTax, 
                                     $discount)) {
+          
+    
     return $result;
   }
   return false;
 }
+
+
+/**
+ * Update various fields for a particular salesorder
+ * @param string $soID
+ * @param object $order
+ */
+function _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $soID, $order) {
+
+  if ( $result = $sf->queryAll("Select PBSI__Order_Date__c from PBSI__PBSI_Sales_Order__c where Id = '{$soID}'") ) {
+    if(count($result->records) == 0) {
+       uc_ascent_report_error($sf, 'Query SalesForce table', "$soID does not exist in SalesForce/Ascent table Sales Orders");
+       return false;
+    }
+  } 
+  $original_date = $result->records[0]->fields->PBSI__Order_Date__c;
+  
+  $sObject1 = new stdClass();
+  $sObject1->Id = $soID;  
+  $sObject1->Order_Reference__c = "Web Order #".$order->order_id;
+  $sObject1->Payment_Status__c = "Paid";
+  $sObject1->PBSI__Due_Date__c = $original_date;
+  $sObject1->Required_Delivery_Date__c = $original_date;
+  $sObject1->PBSI__Invoice_Date__c = $original_date;
+  
+  if ( $updateResponse = $sf->update(array($sObject1), "PBSI__PBSI_Sales_Order__c" ) ) {
+    return true;    
+  }
+  
+  return false;
+                                
+}
+
 
 function _uc_ascent_get_all_order_comments($order_id) {
   $result = db_query("SELECT message FROM {uc_order_comments} WHERE order_id = %d ORDER BY created DESC", $order_id);
@@ -200,7 +235,7 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
 }
 
 class AscentSFClient extends SforceBaseClient {
-  const ENTERPRISE_NAMESPACE = 'urn:enterprise.soap.sforce.com';
+  const ENTERPRISE_NAMESPACE = 'urn:partner.soap.sforce.com';
   public $sforce; // like the stock version but public so we can access more debug
   
   function AscentSFClient() {
