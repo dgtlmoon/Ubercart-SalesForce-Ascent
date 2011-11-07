@@ -129,12 +129,6 @@ function uc_ascent_record_queue($qid, $time_start, $time_end, $request, $respons
                   VALUES (%d, %d, %d, '%s', '%s',%d)", $qid, $time_start, $time_end, $request, $response, $result);
 }
 
-function uc_ascent_record_queue($qid, $time_start, $time_end, $request, $response, $result) {
-      db_query("INSERT INTO {uc_sf_queue_log} 
-                  (qid, request_start_time, request_end_time, 
-                    request_post, request_reply, result_status)
-                  VALUES (%d, %d, %d, '%s', '%s',%d)", $qid, $time_start, $time_end, $request, $response, $result);
-}
 
 
 /**
