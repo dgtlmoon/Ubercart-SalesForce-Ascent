@@ -7,7 +7,7 @@
  */
 function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_product) {
   //addSOLine(string soName,string itemName,double price, double quantity,double discount)
-	$id = _uc_ascent_get_product_ids($sf,$order_product->model );
+  $id = _uc_ascent_query_table($sf, 'PBSI__PBSI_item__c', $order_product->model );
 	if(!$id) {
 		return false;
 	}
@@ -30,7 +30,13 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order = false, $sf_account
   $salesTax = 0; // @todo unsure
   $discount = 0; // @todo integrate with vouchers when that is complete	
 
-  if ($result = $sf->addSalesOrder($sf_account_id, $sf_contact_id, $shippingInstructions, $shippingCost, $salesTax, $discount)) {
+  if ($result = $sf->addSalesOrder( $sf_account_id, 
+                                    $sf_contact_id, 
+                                    $shippingInstructions, 
+                                    $shippingCost, 
+                                    $salesTax, 
+                                    $discount,
+                                    $order->order_id)) {
     return $result;
   }
   return false;
@@ -51,21 +57,21 @@ function _uc_ascent_get_order_total($order_id) {
   return db_result(db_query("SELECT sum(amount) FROM {uc_order_line_items} WHERE order_id =%d", $order_id));
 }
 
-function _uc_ascent_get_product_ids($sf, $product_id) {
+function _uc_ascent_query_table($sf, $key, $value) {
 	static $ids;	
 	
-	if($ids[$product_id]) {
-		return $ids[$product_id];
+	if($ids[$key.$value]) {
+		return $ids[$key.$value];
 	}
 	
-  if ( $result = $sf->queryAll("Select Id from PBSI__PBSI_item__c where Name = '{$product_id}'") ) {
+  if ( $result = $sf->queryAll("Select Id from {$key} where Name = '{$value}'") ) {
     if(count($result->records) == 0) {
-	uc_ascent_report_error($sf, 'Getting product ID', "Product ID $product_id does not exist in SalesForce/Ascent");
+	     uc_ascent_report_error($sf, 'Query SalesForce table', "$value does not exist in SalesForce/Ascent table $key");
     }
-  	$ids[$product_id] = $result->records[0]->Id;
+  	$ids[$key.$value] = $result->records[0]->Id;
   } 
 
-  return $ids[$product_id];
+  return $ids[$key.$value];
 	
 }
 /**
@@ -76,7 +82,7 @@ function _uc_ascent_get_product_ids($sf, $product_id) {
  * @return the contact ID of this person in SF
  */
 function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
-  
+ 
   if (! $order->uid) {
     // only orders that have created accounts (Should be in state payment_received)
     return false;
@@ -115,25 +121,35 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
       'ShippingCountry' => $delivery_country [0] ['country_name'], 
       'ShippingPostalCode' => $order->delivery_postal_code, 
       'ShippingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2,
+    
       // Extra custom fields
       'Type' => 'Customer',
       'Sub_Type__c' => 'Consumer Direct:Online',
       'PBSI__Payment_Terms__c' => 'Cash',
       'Current_Payment_Terms__c' => 'Cash',
-      'c2g__CODAAccountsReceivableControl__c' => 'Accounts Receivable',
-      'c2g__CODAAccountsPayableControl__c' => 'Accounts Payable',
-      'c2g__CODADimension1__c' => 'Consumer Products',
-      'c2g__CODASalesTaxStatus__c' => 'Exempt for Qualifying Products',
-      'c2g__CODATaxCode1__c' => 'FRE',
+      // @note: query the ens: type to lookup values for these things
+      // <element name="c2g__CODAAccountsReceivableControl__r" nillable="true" minOccurs="0" type="ens:c2g__codaGeneralLedgerAccount__c"/>    
+      // 'c2g__CODAAccountsReceivableControl__c' => 'Accounts Receivable', //NOT CONFIGURED
+      // 'c2g__CODAAccountsPayableControl__c' => 'Accounts Payable',  //NOT CONFIGURED
+      'c2g__CODAVATStatus__c' => 'Home',
+      'c2g__CODADimension1__c' => _uc_ascent_query_table($sf, "c2g__CODADimension1__c", "Consumer Products"),
+      'c2g__CODASalesTaxStatus__c' => 'Exempt from Qualifying Products',
+      'c2g__CODATaxCode1__c' => _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE"),
       'c2g__CODATaxCalculationMethod__c' => 'Gross',
-      'c2g__CODAInputVATCode__c' => 'FRE',
-      'c2g__CODAOutputVATCode__c' => 'FRE',
+      'c2g__CODAInputVATCode__c' =>  _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE"),
+      'c2g__CODAOutputVATCode__c' => _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE"),
     );
     
     $response = $sf->create(array (
       $record 
     ), 'Account');
-    $return ['accountId'] = $response [0]->id;
+    
+    // print_r($response);
+    
+    if(! $return['accountId'] = $response[0]->id) {
+      uc_ascent_report_error($sf, 'Creating account failed', "Creeating account for {$order->order_id} failed");
+      return false;      
+    }
     
     $record = array (
       'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}", 
@@ -168,6 +184,7 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
 
 class AscentSFClient extends SforceBaseClient {
   const ENTERPRISE_NAMESPACE = 'urn:enterprise.soap.sforce.com';
+  public $sforce; // like the stock version but public so we can access more debug
   
   function AscentSFClient() {
     $this->namespace = self::ENTERPRISE_NAMESPACE;
@@ -366,7 +383,7 @@ class AscentSFClient extends SforceBaseClient {
    * </xsd:complexType>
    * </xsd:element>
    */
-  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost, $salesTax, $discount) {
+  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost, $salesTax, $discount, $order_id) {
     
     $this->_setSessionHeader($this->ascent);
     
@@ -378,7 +395,7 @@ class AscentSFClient extends SforceBaseClient {
         'shippingInstructions' => strip_tags($shippingInstructions), 
         'shippingCost' => $shippingCost, 
         'salesTax' => 0.00, // @todo what is salestax based on?
-        'discount' => 0.00  // @todo integrate with vouchers?
+        'discount' => 0.00,  // @todo integrate with vouchers? 
       );
       
       $result = $this->ascent->addSO($values);
@@ -387,7 +404,7 @@ class AscentSFClient extends SforceBaseClient {
     catch (SoapFault $fault) {
       throw new SoapFault(1, $fault);
     }
-    
+    // @todo: update any additional fields here?
     return $result->result;
   }
   

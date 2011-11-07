@@ -162,6 +162,8 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
           else {
             uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "Failed to add account");
           }
+           $response = $sf->sforce->__getLastResponse();
+           $request = $sf->sforce->__getLastRequest();
           break;
         case 'SALESORDER_ENTER':
           // grab the SF contact ID from any previous update to this 
@@ -177,7 +179,15 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
                 db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id, parent_qid, extra_data) VALUES ('%s', %d, %d, '%s')", 'SALESORDER_ENTER_ORDERLINES', $order->order_id, $row['qid'], serialize($order_product));
               }
               // Now add the shipping as a line item
-              db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id, parent_qid, sf_id) VALUES ('%s', %d, %d, '%s')", 'SALESORDER_ENTER_ORDERLINES_SHIPPING', $order->order_id, 'SHIPPINGLINEITEM', serialize($order_product));
+              db_query("INSERT INTO {uc_sf_queue} (queue_function, 
+                                                   order_id, 
+                                                   parent_qid, 
+                                                   sf_id) 
+                                                   VALUES ('%s', %d, %d, '%s')", 
+                                                     'SALESORDER_ENTER_SHIPLINE', 
+                                                      $order->order_id, 
+                                                      $row['qid'], 
+                                                      serialize($order_product));
             }
           }
           else {
@@ -191,11 +201,11 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
             uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but no data was found (SALESORDER_ENTER failed?)");
           }
           if ($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row['parent_qid']))) {
-            if ($result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_product)) {
+            if ($orderline_result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_product)) {
               $response = $sf->ascent->__getLastResponse();
               $request = $sf->ascent->__getLastRequest();
               // if this worked, record the ID returned from salesforce
-              db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row['qid']);
+              db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $orderline_result, $row['qid']);
             }
             else {
               $response = $sf->ascent->__getLastResponse();
@@ -205,22 +215,29 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
             }
           }
           break;
-        case 'SALESORDER_ENTER_ORDERLINES_SHIPPING':
+        case 'SALESORDER_ENTER_SHIPLINE':
           if ($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row['parent_qid']))) {
             // mock a drupal ubercart object to contain the line item ID for shipping
             $order_product = new StdClass();
-            $order_product->model = $row['sf_id'];
+            // we need to pass the salesforce object ID directly for this i think
+            // so using the enter_order_line as it wont work, might need to set a flag if it needs to lookup or not
+            // or be smart and analyse the product ID string
+            
+            $order_product->model = 'Freight CP Domestic'; //@todo not showing up as a valid item
+            $order_product->price = 0.00; // Shipping total?
+            $order_product->qty = 1; // one shipping unit
+            
             // send it on
-            if ($result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_product)) {
+            if ($orderline_result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_product)) {
               $response = $sf->ascent->__getLastResponse();
               $request = $sf->ascent->__getLastRequest();
               // if this worked, record the ID returned from salesforce
-              db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row['qid']);
+              db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $orderline_result, $row['qid']);
             }
             else {
               $response = $sf->ascent->__getLastResponse();
               $request = $sf->ascent->__getLastRequest();
-              uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES_SHIPPING was called but expected result was not found");
+              uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_SHIPLINE was called but expected result was not found");
             
             }
           }
