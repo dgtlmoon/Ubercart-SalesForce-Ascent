@@ -111,20 +111,31 @@ function uc_ascent_salesforce_queue_info() {
 
 function uc_ascent_salesforce_queue_item_info($qid) {
 	
+  $query = db_query("SELECT * from {uc_sf_queue_log} WHERE qid=%d ORDER BY request_start_time", $qid);
 	
-	$item = db_fetch_array(db_query("SELECT * from {uc_sf_queue_log} WHERE qid=%d", $qid));
-  $form['request'] = array('#type'=>'textarea', 
+	while($item = db_fetch_array($query)) {
+
+    $form['result_'.$item['id']] = array(  
+      '#type' => 'fieldset', 
+      '#title' => $item['request_start_time'], 
+      '#collapsible' => TRUE, 
+      '#collapsed' => FALSE);
+  
+   $form['result_'.$item['id']]['request'] = array('#type'=>'textarea', 
                            '#cols'=>100, 
                            '#rows'=>15, 
+                           '#weight' =>0,
                            '#value'=>$item['request_post'],
                            '#title'=>'XML Request/Post' ); 
   
-  $form['replay'] = array('#type'=>'textarea', 
+  $form['result_'.$item['id']]['replay'] = array('#type'=>'textarea', 
                            '#cols'=>100, 
-                           '#rows'=>15, 
+                           '#rows'=>15,
+                           '#weight' =>1,
                            '#value'=>$item['request_reply'],
                            '#title'=>'XML Reply' ); 
-  
+	}
+	
   return drupal_render($form);
 }
 
