@@ -81,10 +81,13 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
     // only orders that have created accounts (Should be in state payment_received)
     return false;
   }
+  // make sure we escape strings in this query, these don't get automatically escaped
+  $delivery_first_name = addslashes($order->delivery_first_name);
+  $delivery_last_name = addslashes($order->delivery_last_name);
   
   $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
-                            FirstName = '{$order->delivery_first_name}' 
-                            AND LastName = '{$order->delivery_last_name}'
+                            FirstName = '{$delivery_first_name}' 
+                            AND LastName = '{$delivery_last_name}'
                             AND Email = '{$order->primary_email}'");
   
   if ($result->size == 0) {
@@ -146,8 +149,6 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
       'MobilePhone' => $order->delivery_phone, 
       'AccountId' => $response [0]->id,
       'Customer_Type__c' => 'Consumer Direct: Online',
-    
-    
     );
     
     $response = $sf->create(array (
