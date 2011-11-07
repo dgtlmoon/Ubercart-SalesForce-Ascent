@@ -129,6 +129,14 @@ function uc_ascent_record_queue($qid, $time_start, $time_end, $request, $respons
                   VALUES (%d, %d, %d, '%s', '%s',%d)", $qid, $time_start, $time_end, $request, $response, $result);
 }
 
+function uc_ascent_record_queue($qid, $time_start, $time_end, $request, $response, $result) {
+      db_query("INSERT INTO {uc_sf_queue_log} 
+                  (qid, request_start_time, request_end_time, 
+                    request_post, request_reply, result_status)
+                  VALUES (%d, %d, %d, '%s', '%s',%d)", $qid, $time_start, $time_end, $request, $response, $result);
+}
+
+
 /**
  * Actual job runner
  * @param sfClient object $sf
@@ -175,7 +183,7 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
                 db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id, parent_qid, extra_data) VALUES ('%s', %d, %d, '%s')", 'SALESORDER_ENTER_ORDERLINES', $order->order_id, $row['qid'], serialize($order_product));
               }
               // Now add the shipping as a line item
-              db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id, parent_qid, extra_data) VALUES ('%s', %d, %d, '%s')", 'SALESORDER_ENTER_ORDERLINES', $order->order_id, $row['qid'], serialize($order_product));
+              db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id, parent_qid, sf_id) VALUES ('%s', %d, %d, '%s')", 'SALESORDER_ENTER_ORDERLINES_SHIPPING', $order->order_id, 'SHIPPINGLINEITEM', serialize($order_product));
             }
           }
           else {
@@ -203,6 +211,26 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
             }
           }
           break;
+        case 'SALESORDER_ENTER_ORDERLINES_SHIPPING':
+          if ($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row['parent_qid']))) {
+            // mock a drupal ubercart object to contain the line item ID for shipping
+            $order_product = new StdClass();
+            $order_product->model = $row['sf_id'];
+            // send it on
+            if ($result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_product)) {
+              $response = $sf->ascent->__getLastResponse();
+              $request = $sf->ascent->__getLastRequest();
+              // if this worked, record the ID returned from salesforce
+              db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row['qid']);
+            }
+            else {
+              $response = $sf->ascent->__getLastResponse();
+              $request = $sf->ascent->__getLastRequest();
+              uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES_SHIPPING was called but expected result was not found");
+            
+            }
+          }
+          break;          
       }
       
       $time_end = time();
