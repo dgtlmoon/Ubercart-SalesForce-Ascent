@@ -135,8 +135,9 @@ function _uc_ascent_query_table($sf, $key, $value) {
  */
 function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
  
-  if (! $order->uid) {
+  if ($order->order_status != 'payment_received') {
     // only orders that have created accounts (Should be in state payment_received)
+     uc_ascent_report_error($sf, "Processing account upsert for order id {$order->order_id}", "Failed, order not in payment_received mode");
     return false;
   }
   // make sure we escape strings in this query, these don't get automatically escaped
