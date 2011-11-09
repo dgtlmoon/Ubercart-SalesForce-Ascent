@@ -63,6 +63,38 @@ function _get_wsdl_in_resource_directory() {
 
 function uc_ascent_salesforce_queue_info() {
   
+  $output = "<h2>Basic statistics</h2>";
+  
+  // show some general statistics
+  $result = db_query("SELECT count(*) as c, queue_function from {uc_sf_queue} GROUP BY queue_function");
+  while($row = db_fetch_array($result)) {
+    $output.= '<strong>'.$row['queue_function'].'</strong> - '.$row['c'].'<br />';
+  }
+  $output .="<br/>";
+  $output .="<h2>Sanity check on all records</h2>";
+  $output .="<i>This checks all transations in the ubercart system are accounted for here, <br /> an each transaction has atleast one SALESORDER_ENTER</i>";
+  
+  $oldest_order_id = db_result(db_query(" select min(order_id) from uc_sf_queue"));
+  $result = db_query("SELECT count(*) as c, qid,queue_function,order_id from uc_sf_queue where order_id >= %d group by queue_function,order_id;", $oldest_order_id);
+  $stats = array();
+  while($row = db_fetch_array($result)) {
+    $stats["order-id-".$row['order_id']][$row['queue_function']]++;
+  }
+  
+  $problem_output=false;
+  // now go through each row and make sure it has what we expect
+  foreach($stats as $order_id => $info) {
+    if($info['ACCOUNT_UPSERT'] == 1 && $info['SALESORDER_ENTER'] == 1 && $info['SALESORDER_ENTER_ORDERLINES'] >= 1) {
+      // everything is good
+    } else {
+      $problem_output.= "<p>Problem with {$order_id}</p>\n";
+    }
+  }
+  
+  $output.=$problem_output ? $problem_output : '<p>No errors found</p>';
+  
+  $output .="<br/>";
+  $output.="<h2>Queue status</h2>";
   $header = array (
     array (
     'data' => t('Queue ID'), 'field' => 'qid' 
@@ -79,7 +111,7 @@ function uc_ascent_salesforce_queue_info() {
   ) 
   );
   
-  $result = pager_query('SELECT * FROM {uc_sf_queue} ' . tablesort_sql($header), 100, 0, 2, 1);
+  $result = db_query('SELECT * FROM {uc_sf_queue} order by order_id DESC limit 0,1000');
   $rows = array ();
   while ($queue_item = db_fetch_object($result)) {
     $rows [] = array (
@@ -93,13 +125,13 @@ function uc_ascent_salesforce_queue_info() {
   }
   
   if (count($rows)) {
-    $output = theme('table', $header, $rows, array (
+    $output .= theme('table', $header, $rows, array (
       'width' => '100%' 
     ));
     $output .= theme('pager', NULL, 20);
   }
   else {
-    $output = '<p>' . t('There are currently no queued Salesforce/Ascent activities in the system') . '</p>';
+    $output .= '<p>' . t('There are currently no queued Salesforce/Ascent activities in the system') . '</p>';
   }
   
   $output .= '<p><i>' . t('Events are queued from conditional actions from Ubercart activities') . '</i></p>';
