@@ -139,10 +139,17 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
   $delivery_first_name = addslashes($order->delivery_first_name);
   $delivery_last_name = addslashes($order->delivery_last_name);
   
-  $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
-                            FirstName = '{$delivery_first_name}' 
-                            AND LastName = '{$delivery_last_name}'
-                            AND Email = '{$order->primary_email}'");
+  // sometimes staff enter sales for a customer, and dont get their email address
+  if(strlen($order->primary_email)) {
+    $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
+                              FirstName = '{$delivery_first_name}' 
+                              AND LastName = '{$delivery_last_name}'
+                              AND Email = '{$order->primary_email}'");
+  } else {
+    $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
+                              FirstName = '{$delivery_first_name}' 
+                              AND LastName = '{$delivery_last_name}'");    
+  }
   
   if ($result->size == 0) {
     $delivery_zone = uc_get_zone_code($order->delivery_zone);
