@@ -184,8 +184,8 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
       'Current_Payment_Terms__c' => 'Cash',
       // @note: query the ens: type to lookup values for these things
       // <element name="c2g__CODAAccountsReceivableControl__r" nillable="true" minOccurs="0" type="ens:c2g__codaGeneralLedgerAccount__c"/>    
-      // 'c2g__CODAAccountsReceivableControl__c' => 'Accounts Receivable', //NOT CONFIGURED
-      // 'c2g__CODAAccountsPayableControl__c' => 'Accounts Payable',  //NOT CONFIGURED
+      'c2g__CODAAccountsPayableControl__c' => _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Payable"),  //NOT CONFIGURED
+      'c2g__CODAAccountsReceivableControl__c' => _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Receivable"),
       'c2g__CODAVATStatus__c' => 'Home',
       'c2g__CODADimension1__c' => _uc_ascent_query_table($sf, "c2g__CODADimension1__c", "Consumer Products"),
       'c2g__CODASalesTaxStatus__c' => 'Exempt from Qualifying Products',
