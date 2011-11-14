@@ -8,14 +8,14 @@ function uc_ascent_salesforce_menu() {
     'uc_ascent_salesforce_settings_form' 
   ), 'access arguments' => array (
     'administer store' 
-  ), 'file' => 'uc_ascent_salesforce.admin.inc', 'type' => MENU_CALLBACK 
+  ), 'file' => 'uc_ascent_salesforce.admin.inc', 'type' => MENU_DEFAULT_LOCAL_TASK 
   );
   $items['admin/store/settings/uc_salesforce/configure'] = array (
     'title' => 'API/Security Settings', 'description' => t('Configure the SalesForce Ascent API settings'), 'page callback' => 'drupal_get_form', 'page arguments' => array (
     'uc_ascent_salesforce_settings_form' 
   ), 'access arguments' => array (
     'administer store' 
-  ), 'file' => 'uc_ascent_salesforce.admin.inc', 'type' => MENU_DEFAULT_LOCAL_TASK, 'weight' => - 10 
+  ), 'file' => 'uc_ascent_salesforce.admin.inc', 'type' => MENU_LOCAL_TASK, 'weight' => - 10 
   );
   
   $items['admin/store/settings/uc_salesforce/queue'] = array (
