@@ -264,7 +264,7 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
             // so using the enter_order_line as it wont work, might need to set a flag if it needs to lookup or not
             // or be smart and analyse the product ID string
             
-            $order_product->model = 'Freight CP Domestic'; //@todo not showing up as a valid item
+            $order_product->model = _uc_ascent_get_shippinglineitem_product_code();
             $order_product->price = 0.00; // Shipping total?
             $order_product->qty = 1; // one shipping unit
             

@@ -126,6 +126,10 @@ function _uc_ascent_query_table($sf, $key, $value) {
   return $ids[$key.$value];
 	
 }
+
+function _uc_ascent_get_shippinglineitem_product_code() {
+  return 'Freight CP Domestic';
+}
 /**
  * Create the entry in salesforce, check to see if theres a contact by this name, 
  * if not, create an account and a contact (linked to this account)

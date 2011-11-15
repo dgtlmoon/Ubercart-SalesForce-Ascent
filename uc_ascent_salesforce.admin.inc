@@ -182,6 +182,12 @@ function uc_ascent_salesforce_configuration_check() {
     return $output;
   }
   $output.="<h2>Product ID check</h2>";
+  // add the lineitem product code (this is also added as a lineitem)
+  
+  $code_id =_uc_ascent_get_shippinglineitem_product_code();
+  $id =  _uc_ascent_query_table($sf, 'PBSI__PBSI_item__c', $code_id ); 
+  $rows[] = array($code_id, $code_id, 'n/a', $id);
+  
   $query = db_query("SELECT nid, vid from {node} where type='product'");
   while ($node_row = db_fetch_array($query)) {
     $node = node_load(array('nid'=>$node_row['nid'], 'vid'=>$node_row['vid']));
