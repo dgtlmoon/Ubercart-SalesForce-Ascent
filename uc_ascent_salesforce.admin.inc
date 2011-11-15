@@ -171,4 +171,47 @@ function uc_ascent_salesforce_queue_item_info($qid) {
   return drupal_render($form);
 }
 
+function uc_ascent_salesforce_configuration_check() {
+  
+  $sf = uc_ascent_connect();
+  
+  if($sf) {
+    $output .= "<p>SalesForce/Ascent connection <strong>established</strong></p>";
+  } else {
+    $output .= "<p>SalesForce/Ascent connection <strong>NOT established</strong></p>";
+    return $output;
+  }
+  $output.="<h2>Product ID check</h2>";
+  $query = db_query("SELECT nid, vid from {node} where type='product'");
+  while ($node_row = db_fetch_array($query)) {
+    $node = node_load(array('nid'=>$node_row['nid'], 'vid'=>$node_row['vid']));
+    $id = _uc_ascent_query_table($sf, 'PBSI__PBSI_item__c', $node->model );    
+    $row = array(l($node->title,'node/'.$node->nid), $node->model, $node->status == 1 ? "Published" : "Unpublished", $id);
+    $rows[] = $row;
+  }
+  
+  $output.=theme('table', array('Node Title', 'Model / SKU','Node Status' ,'SalesForce ID'), $rows);
+  
+  $SF_table_value_lookups = array();
+  $SF_table_value_lookups[]["c2g__codaGeneralLedgerAccount__c"] = "Accounts Payable";
+  $SF_table_value_lookups[]["c2g__codaGeneralLedgerAccount__c"] = "Accounts Receivable";
+  $SF_table_value_lookups[]["c2g__CODADimension1__c"] = "Consumer Products";
+  $SF_table_value_lookups[]["c2g__codaTaxCode__c"] = "FRE";
+  
+  $output.="<h2>Check custom field values exist</h2>";
+  $rows = array();
+  foreach($SF_table_value_lookups as $lookup) {
+    foreach($lookup as $field => $value) {
+      $id = _uc_ascent_query_table($sf, $field, $value );
+      $row = array($field, $value, $id);
+      $rows[] = $row;  
+    }
+  } 
+  
+  $output.=theme('table', array('Field to check', 'Value to check', 'SalesForce ID'), $rows);
+  $sf->logout();
+  
+  return $output;
+}
+
 

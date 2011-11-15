@@ -24,6 +24,11 @@ function uc_ascent_salesforce_menu() {
   ), 'file' => 'uc_ascent_salesforce.admin.inc', 'weight' => 1, 'type' => MENU_LOCAL_TASK 
   );
   
+  $items['admin/store/settings/uc_salesforce/configcheck'] = array (
+    'title' => 'Configuration Check', 'page callback' => 'uc_ascent_salesforce_configuration_check', 'access arguments' => array (
+    'administer store' 
+  ), 'file' => 'uc_ascent_salesforce.admin.inc', 'weight' => 1, 'type' => MENU_LOCAL_TASK 
+  );
   $items['admin/store/settings/uc_salesforce/queue/%'] = array (
     'title' => 'Queue Status', 'page callback' => 'uc_ascent_salesforce_queue_item_info', 'page arguments' => array (
     5 
@@ -87,6 +92,13 @@ function uc_ascent_salesforce_ca_action_upsert_sales_order($order = false) {
 
 function uc_ascent_salesforce_cron() {
   
+  $sf = uc_ascent_connect();
+
+  uc_ascent_salesforce_process_jobs($sf);
+  $sf->logout();
+}
+
+function uc_ascent_connect() {
   // skip or not
   if (variable_get('uc_ascent_salesforce_run_cron', false) == false) {
     watchdog('salesforceascent', t('Cron run skipped because we werent enabled to run.'));
@@ -117,9 +129,8 @@ function uc_ascent_salesforce_cron() {
     uc_ascent_report_error($sf, "Authenticating with SalesForce", $err);
     return false;
   }
-
-  uc_ascent_salesforce_process_jobs($sf);
-  $sf->logout();
+  
+  return $sf;
 }
 
 function uc_ascent_record_queue($qid, $time_start, $time_end, $request, $response, $result) {
