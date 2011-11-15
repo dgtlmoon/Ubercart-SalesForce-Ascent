@@ -178,7 +178,7 @@
    <xsd:element name="addSOLine">
     <xsd:complexType>
      <xsd:sequence>
-      <xsd:element name="soName" type="xsd:string" nillable="true"/>
+      <xsd:element name="soid" type="xsd:string" nillable="true"/>
       <xsd:element name="itemName" type="xsd:string" nillable="true"/>
       <xsd:element name="price" type="xsd:double" nillable="true"/>
       <xsd:element name="quantity" type="xsd:double" nillable="true"/>
