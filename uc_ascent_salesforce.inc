@@ -85,6 +85,7 @@ function _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $soID, $order) 
   $sObject1->Required_Delivery_Date__c = $original_date;
   $sObject1->PBSI__Invoice_Date__c = $original_date;
   
+  
   if ( $updateResponse = $sf->update(array($sObject1), "PBSI__PBSI_Sales_Order__c" ) ) {
     return $updateResponse[0]->success;
   }
@@ -191,12 +192,26 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
       'c2g__CODAAccountsReceivableControl__c' => _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Receivable"),
       'c2g__CODAVATStatus__c' => 'Home',
       'c2g__CODADimension1__c' => _uc_ascent_query_table($sf, "c2g__CODADimension1__c", "Consumer Products"),
-      'c2g__CODASalesTaxStatus__c' => 'Exempt from Qualifying Products',
-      'c2g__CODATaxCode1__c' => _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE"),
+      'c2g__CODASalesTaxStatus__c' => 'Exempt from Qualifying Products',      
       'c2g__CODATaxCalculationMethod__c' => 'Gross',
-      'c2g__CODAInputVATCode__c' =>  _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE"),
-      'c2g__CODAOutputVATCode__c' => _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE"),
+      'c2g__CODAECCountryCode__c' => 'GB'
+ 
     );
+    
+    switch($order->currency) {
+      case 'AUD':
+        $record['c2g__CODATaxCode1__c'] = _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE");
+        $record['c2g__CODAInputVATCode__c'] =  _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE");
+        $record['c2g__CODAOutputVATCode__c'] = _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE");
+        $record['CurrencyIsoCode'] = 'AUD';           
+      break;
+      case 'USD':        
+        $record['c2g__CODATaxCode1__c'] = _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "EXP");
+        $record['c2g__CODAInputVATCode__c'] =  _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "EXP");
+        $record['c2g__CODAOutputVATCode__c'] = _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "EXP");
+        $record['CurrencyIsoCode'] = 'USD';                   
+      break;      
+    }
     
     
     $response = $sf->create(array (
