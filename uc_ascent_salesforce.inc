@@ -74,12 +74,13 @@ function _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $soID, $order) 
        uc_ascent_report_error($sf, 'Query SalesForce table', "$soID does not exist in SalesForce/Ascent table Sales Orders");
        return false;
     }
-  } 
+  }
+   
   $original_date = $result->records[0]->fields->PBSI__Order_Date__c;
   
   $sObject1 = new stdClass();
   $sObject1->Id = $soID;  
-  $sObject1->Order_Reference__c = "#".$order->order_id; //maximum 15 chars
+  $sObject1->PBSI__Customer_Purchase_Order__c = "Weborder #".$order->order_id; //maximum 15 chars?
   $sObject1->Payment_Status__c = "Paid";
   $sObject1->PBSI__Due_Date__c = $original_date;
   $sObject1->Required_Delivery_Date__c = $original_date;
