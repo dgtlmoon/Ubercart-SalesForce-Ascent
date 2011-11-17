@@ -173,7 +173,7 @@ function uc_ascent_salesforce_queue_item_info($qid) {
 
 function uc_ascent_salesforce_configuration_check() {
   
-  $sf = uc_ascent_connect();
+  $sf = uc_ascent_connect(true);
   
   if($sf) {
     $output .= "<p>SalesForce/Ascent connection <strong>established</strong></p>";
@@ -203,13 +203,18 @@ function uc_ascent_salesforce_configuration_check() {
   $SF_table_value_lookups[]["c2g__codaGeneralLedgerAccount__c"] = "Accounts Receivable";
   $SF_table_value_lookups[]["c2g__CODADimension1__c"] = "Consumer Products";
   $SF_table_value_lookups[]["c2g__codaTaxCode__c"] = "FRE";
+  $SF_table_value_lookups[]["c2g__codaTaxCode__c"] = "EXP";
   
   $output.="<h2>Check custom field values exist</h2>";
   $rows = array();
   foreach($SF_table_value_lookups as $lookup) {
     foreach($lookup as $field => $value) {
-      $id = _uc_ascent_query_table($sf, $field, $value );
-      $row = array($field, $value, $id);
+      try {
+        $id = _uc_ascent_query_table($sf, $field, $value );
+      } catch (SoapFault $err) {
+        $id = '<span style="color:#ee0000">&lt;field not configured/available&gt;</span>';
+      }
+      $row = array($field, $value, $id ? $id : '<span style="color:#ee0000">&lt;value missing&gt;</span>');
       $rows[] = $row;  
     }
   } 
