@@ -5,16 +5,14 @@
  * @param salesforce interface $sf
  * @param object of each order product from $order $order_product
  */
-function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_product) {
+function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_product, $order_id) {
   //addSOLine(string soName,string itemName,double price, double quantity,double discount)
   $id = _uc_ascent_query_table($sf, 'PBSI__PBSI_item__c', $order_product->model );
 	if(!$id) {
 		return false;
 	}
 
-  $discount = 0.00; //@todo integrate discounts when vouchers are in use
-  
-  if ($result = $sf->addSalesOrderLineItem($soName, $id , $order_product->price, $order_product->qty, $discount)) {
+	if ($result = $sf->addSalesOrderLineItem($soName, $id , $order_product->price, $order_product->qty, 0.00)) {
     return $result;
   }
   
@@ -30,15 +28,8 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf
   // SalesTax per Teresa's rules
   // Items are sales tax free, except in australia
   // where the shipping amount attracts a 10% tax
-  $shipping_items = uc_order_load_line_items($order, true);
-  $shipping_total = 0.00;
-  $salesTax = 0.00;
-  
-  foreach($shipping_items as $item) {
-    if($item['type'] == 'shipping') {
-      $shipping_total += $item['amount'];
-    }
-  }
+  $shipping_total = 0.00; // now calculated from the line entry
+  $salesTax = 0.00;  
     
   if($order->currency == 'AUD') {
     // shipping total includes 10% of the tax
@@ -46,14 +37,23 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf
     $salesTax = 10;
   }
 
-  $discount = 0; // @todo integrate with vouchers when that is complete	
-
+  $discount_amount = abs(uc_ascent_salesforce_total_lineitem_type($order, "coupon"));
+  
+  $amount =  uc_order_get_total($order, true);
+  
+  $percent_discount =  ($discount_amount/$amount) *100;
+  
+  
+  // the API accepts discount as a % not an arbitrary number
+  // work out what % this discount is from the total amount of the order
+  
+  
   if ($result = $sf->addSalesOrder( $sf_account_id, 
                                     $sf_contact_id, 
                                     $shippingInstructions, 
                                     $shipping_total, 
                                     $salesTax, 
-                                    $discount)) {
+                                    $percent_discount)) {
           
     
     return $result;
@@ -249,9 +249,8 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
   
   }
   else {
-    $return ['accountId'] = $result->records [0]->AccountId;
-    $return ['contactId'] = $result->records [0]->Id;
-  
+    $return ['accountId'] = $result->records[0]->fields->AccountId;
+    $return ['contactId'] = $result->records[0]->fields->Id;
   }
   
   return $return;
@@ -473,7 +472,7 @@ class AscentSFClient extends SforceBaseClient {
         'shippingInstructions' => strip_tags($shippingInstructions), 
         'ShippingCost' => $shippingCost, 
         'salesTax' => $salesTax, 
-        'discount' => $discount,  // @todo integrate with vouchers? 
+        'discount' => $discount, 
       );
       
       $result = $this->ascent->addSO($values);
