@@ -5,7 +5,7 @@
  * @param salesforce interface $sf
  * @param object of each order product from $order $order_product
  */
-function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_product, $order_id) {
+function _uc_ascent_salesforce_salesforce_enter_order_line($sf, $soName, $order_product) {
   //addSOLine(string soName,string itemName,double price, double quantity,double discount)
   $id = _uc_ascent_query_table($sf, 'PBSI__PBSI_item__c', $order_product->model );
 	if(!$id) {
