@@ -157,6 +157,7 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
   else {
     $db_result = db_query("SELECT qid, queue_function, order_id, extra_data, parent_qid FROM {uc_sf_queue} WHERE q_status = 0 ORDER BY order_id, qid");
   }
+  
   while ($row = db_fetch_array($db_result)) {
     $order = uc_order_load($row['order_id']);
     $time_start = time();
@@ -259,17 +260,18 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
         case 'SALESORDER_ENTER_SHIPLINE':
           if ($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row['parent_qid']))) {
             // mock a drupal ubercart object to contain the line item ID for shipping
-            $order_product = new StdClass();
+            $order_shipping = new StdClass();
+            $order = uc_order_load($row['order_id']);
             // we need to pass the salesforce object ID directly for this i think
             // so using the enter_order_line as it wont work, might need to set a flag if it needs to lookup or not
             // or be smart and analyse the product ID string
             
-            $order_product->model = _uc_ascent_get_shippinglineitem_product_code();
-            $order_product->price = 0.00; // Shipping total?
-            $order_product->qty = 1; // one shipping unit
+            $order_shipping->model = _uc_ascent_get_shippinglineitem_product_code();
+            $order_shipping->price = uc_ascent_salesforce_total_lineitem_type($order, 'shipping');
+            $order_shipping->qty = 1; // one shipping unit
             
             // send it on
-            if ($orderline_result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_product)) {
+            if ($orderline_result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_shipping)) {
               $response = $sf->ascent->__getLastResponse();
               $request = $sf->ascent->__getLastRequest();
               // if this worked, record the ID returned from salesforce
@@ -317,12 +319,24 @@ function uc_ascent_salesforce_form_alter(&$form, $form_state, $form_id) {
 }
 
 function uc_ascent_salesforce_form_validate($form, &$form_state) {
-  
   if (strlen($form_state['values']['panes']['comments']['comments']) > 254) {
     form_set_error('comments', t('Comment is too long, only 255 characters are alowed here, you have %length', array (
       '%length' => strlen($form_state['values']['panes']['comments']['comments']) 
     )));
   }
-
 }
+
+// calculates the shipping related line items of this order
+function uc_ascent_salesforce_total_lineitem_type($order, $type="shipping") {
+  
+  $total = 0.00;
+  foreach($order->line_items as $line_item) {
+    if($line_item['type'] == $type) {
+      $total += $line_item['amount'];
+    }
+  } 
+  
+  return $total;
+}
+
 
