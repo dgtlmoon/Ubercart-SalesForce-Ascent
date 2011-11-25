@@ -141,6 +141,21 @@ function _uc_ascent_get_shippinglineitem_product_code() {
  */
 function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
  
+  // people have a nasty habbit of changing things
+  $lookups['EXP'] =_uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "EXP");
+  $lookups['FRE'] =_uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE");
+  $lookups['Accounts Payable'] = _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Payable");
+  $lookups['Accounts Receivable'] = _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Receivable");  
+  $lookups['Consumer Products']  = _uc_ascent_query_table($sf, "c2g__CODADimension1__c", "Consumer Products");
+  
+  foreach($lookups as $field=> $lookup) {
+    if(!strlen($lookup)) {
+      uc_ascent_report_error($sf, 'Account checked failed', $field. " field value is missing");
+      return false;
+    }      
+  }
+    
+  
   // make sure we escape strings in this query, these don't get automatically escaped
   $delivery_first_name = addslashes($order->delivery_first_name);
   $delivery_last_name = addslashes($order->delivery_last_name);
@@ -189,10 +204,10 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
       'Sub_Type__c' => 'Consumer Direct:Online',
       'PBSI__Payment_Terms__c' => 'Cash',
       'Current_Payment_Terms__c' => 'Cash',
-      'c2g__CODAAccountsPayableControl__c' => _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Payable"),  
-      'c2g__CODAAccountsReceivableControl__c' => _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Receivable"),
+      'c2g__CODAAccountsPayableControl__c' => $lookups['Accounts Payable'],
+      'c2g__CODAAccountsReceivableControl__c' => $lookups['Accounts Receivable'],
       'c2g__CODAVATStatus__c' => 'Home',
-      'c2g__CODADimension1__c' => _uc_ascent_query_table($sf, "c2g__CODADimension1__c", "Consumer Products"),
+      'c2g__CODADimension1__c' => $lookups['Consumer Products'],
       'c2g__CODASalesTaxStatus__c' => 'Exempt from Qualifying Products',      
       'c2g__CODATaxCalculationMethod__c' => 'Gross',
       'c2g__CODAECCountryCode__c' => 'GB'
@@ -201,15 +216,15 @@ function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
     
     switch($order->currency) {
       case 'AUD':
-        $record['c2g__CODATaxCode1__c'] = _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE");
-        $record['c2g__CODAInputVATCode__c'] =  _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE");
-        $record['c2g__CODAOutputVATCode__c'] = _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE");
+        $record['c2g__CODATaxCode1__c'] = $lookups['FRE'];
+        $record['c2g__CODAInputVATCode__c'] =  $lookups['FRE'];
+        $record['c2g__CODAOutputVATCode__c'] = $lookups['FRE'];
         $record['CurrencyIsoCode'] = 'AUD';           
       break;
       case 'USD':        
-        $record['c2g__CODATaxCode1__c'] = _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "EXP");
-        $record['c2g__CODAInputVATCode__c'] =  _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "EXP");
-        $record['c2g__CODAOutputVATCode__c'] = _uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "EXP");
+        $record['c2g__CODATaxCode1__c'] = $lookups['EXP'];
+        $record['c2g__CODAInputVATCode__c'] =  $lookups['EXP'];
+        $record['c2g__CODAOutputVATCode__c'] = $lookups['EXP'];
         $record['CurrencyIsoCode'] = 'USD';                   
       break;      
     }
