@@ -339,4 +339,14 @@ function uc_ascent_salesforce_total_lineitem_type($order, $type="shipping") {
   return $total;
 }
 
+// hook_order implementation
+function uc_ascent_salesforce_order($op, $arg1) {
+  if($op == 'delete') {
+    $order_id = $arg1->order_id;
+    db_query("DELETE FROM {uc_sf_queue} where order_id = %d", $order_id);
+  }
+}
+
+
+
 
