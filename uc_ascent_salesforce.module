@@ -50,19 +50,21 @@ function uc_ascent_salesforce_menu() {
 function uc_ascent_salesforce_ca_action() {
   
   $actions['uc_ascent_salesforce_ca_action_queue_account_sync'] = array (
-    '#title' => t('Queue a salesforce<->ubercart account upsert'), '#category' => t('Salesforce'), '#callback' => 'uc_ascent_salesforce_ca_action_upsert_account', '#arguments' => array (
-    'order' => array (
-    '#entity' => 'uc_order', '#title' => t('Order') 
-  ) 
-  ) 
+    '#title' => t('Queue a salesforce<->ubercart account upsert'), 
+    '#category' => t('Salesforce'), 
+    '#callback' => 'uc_ascent_salesforce_ca_action_upsert_account', 
+    '#arguments' => array (
+      'order' => array ( '#entity' => 'uc_order', '#title' => t('Order') ) 
+    ) 
   );
   
   $actions['uc_ascent_salesforce_ca_action_queue_sales_order_and_lines'] = array (
-    '#title' => t('Queue a salesforce<->ubercart sales order upsert'), '#category' => t('Salesforce'), '#callback' => 'uc_ascent_salesforce_ca_action_upsert_sales_order', '#arguments' => array (
-    'order' => array (
-    '#entity' => 'uc_order', '#title' => t('Order') 
-  ) 
-  ) 
+    '#title' => t('Queue a salesforce<->ubercart sales order upsert'), 
+    '#category' => t('Salesforce'), 
+    '#callback' => 'uc_ascent_salesforce_ca_action_upsert_sales_order', 
+    '#arguments' => array (
+      'order' => array ( '#entity' => 'uc_order', '#title' => t('Order') ) 
+    ) 
   );
   
   return $actions;
@@ -79,7 +81,17 @@ function uc_ascent_report_error($sf, $type, $message) {
  * @param UberCart order object $order
  */
 function uc_ascent_salesforce_ca_action_upsert_account($order = false) {
-  db_query("INSERT INTO {uc_sf_queue} (queue_function, order_id) VALUES ('%s', %d)", 'ACCOUNT_UPSERT', $order->order_id);
+  // prepare contact details for serialization
+  $info = array();
+  $info['billingFirstName']=$order->billing_first_name;
+  $info['billingLastName']=$order->billing_last_name;
+  $info['deliveryFirstName']=$order->delivery_first_name;
+  $info['deliveryLastName']=$order->delivery_last_name;
+  $info['deliveryEmail']=$order->primary_email;
+  $info['billingEmail']=$order->primary_email;
+  $info['description']= "WebOrder #".$order->order_id;
+  
+  db_query("INSERT INTO {uc_sf_queue} (queue_function, extra_data, order_id) VALUES ('%s', '%s', %d)", 'ACCOUNT_UPSERT', serialize($info), $order->order_id);
 }
 
 function uc_ascent_salesforce_ca_action_upsert_sales_order($order = false) {
@@ -93,7 +105,7 @@ function uc_ascent_salesforce_ca_action_upsert_sales_order($order = false) {
 function uc_ascent_salesforce_cron() {
   
   $sf = uc_ascent_connect();
-
+  
   uc_ascent_salesforce_process_jobs($sf);
   $sf->logout();
 }
@@ -167,17 +179,25 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
     try {
       switch ($row['queue_function']) {
         case 'ACCOUNT_UPSERT':
-          if ($id = _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order)) {
-           $response = $sf->sforce->__getLastResponse();
-           $request = $sf->sforce->__getLastRequest();            
+          // record a new entry for this request
+          // this can be used to prime many records that arent just for salesorders
+          // so we just take the name details first
+          $info =unserialize($row['extra_data']);
+          if ($result= _uc_ascent_salesforce_account_upsert_contact($sf, $info['billingFirstName']
+                                                                    , $info['billingLastName']
+                                                                    , $info['deliveryFirstName']
+                                                                    , $info['deliveryLastName']
+                                                                    , $info['deliveryEmail']
+                                                                    , $info['billingEmail']
+                                                                    , $info['description'] )) {
+            $info = $info+$result;          
             // record the status and set the flag as 1 = processed
-            db_query("UPDATE {uc_sf_queue} SET extra_data = '%s', q_status=1 WHERE qid='%d'", serialize($id), $row['qid']);
+            db_query("UPDATE {uc_sf_queue} SET extra_data = '%s', q_status=1 WHERE qid='%d'", serialize($info), $row['qid']);
+            
           }
           else {
             uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "Failed to add account");
           }
-           $response = $sf->sforce->__getLastResponse();
-           $request = $sf->sforce->__getLastRequest();
           break;
         case 'SALESORDER_ENTER':
           // grab the SF contact ID from any previous update to this 
@@ -185,6 +205,11 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
           if ($sf_id) {
             $sf_contact_id = $sf_id['contactId'];
             $sf_account_id = $sf_id['accountId'];
+            
+            // update the account/contact details, this stuff related to orders/sales
+            $result = _uc_ascent_salesforce_set_account_aux($sf, $sf_account_id, $sf_contact_id, $order);                                                               
+  
+            
             if ($result = _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf_contact_id)) {
               // if this worked, record the ID returned from salesforce
               db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row['qid']);
@@ -211,30 +236,16 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
                                                       $order->order_id, 
                                                       $row['qid']);
                                                       
-              $response = $sf->ascent->__getLastResponse();
-              $request = $sf->ascent->__getLastRequest();                                                      
+                                                  
             }
-          }
-          else {
-            $response = $sf->ascent->__getLastResponse();
-            $request = $sf->ascent->__getLastRequest();
-            uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER was called but no data was found (ADD ACCOUNT failed?)");
           }
           break;
         case 'SALESORDER_AUX_FIELDS':
           if ($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row['parent_qid']))) {
             $order_product = uc_order_load($row['order_id']);
             if ($aux_result = _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $sf_order_id, $order_product)) {
-              $response = $sf->ascent->__getLastResponse();
-              $request = $sf->ascent->__getLastRequest();
               // if this worked, record the ID returned from salesforce
               db_query("UPDATE {uc_sf_queue} SET q_status=1 WHERE qid= %d ", $row['qid']);
-            }
-            else {
-              $response = $sf->ascent->__getLastResponse();
-              $request = $sf->ascent->__getLastRequest();
-              uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but expected result was not found");
-            
             }
           }
           
@@ -245,15 +256,8 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
           }
           if ($sf_order_id = db_result(db_query("SELECT sf_id FROM {uc_sf_queue} WHERE qid = %d", $row['parent_qid']))) {
             if ($orderline_result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_product)) {
-              $response = $sf->ascent->__getLastResponse();
-              $request = $sf->ascent->__getLastRequest();
               // if this worked, record the ID returned from salesforce
               db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $orderline_result, $row['qid']);
-            }
-            else {
-              $response = $sf->ascent->__getLastResponse();
-              $request = $sf->ascent->__getLastRequest();
-              uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_ORDERLINES was called but expected result was not found");            
             }
           }
           break;
@@ -272,16 +276,8 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
             
             // send it on
             if ($orderline_result = _uc_ascent_salesforce_salesforce_enter_order_line($sf, $sf_order_id, $order_shipping)) {
-              $response = $sf->ascent->__getLastResponse();
-              $request = $sf->ascent->__getLastRequest();
               // if this worked, record the ID returned from salesforce
               db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $orderline_result, $row['qid']);
-            }
-            else {
-              $response = $sf->ascent->__getLastResponse();
-              $request = $sf->ascent->__getLastRequest();
-              uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "SALESORDER_ENTER_SHIPLINE was called but expected result was not found");
-            
             }
           }
           break;          
@@ -297,8 +293,6 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
     }
     catch (SoapFault $err) {
       uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", $err);
-      $response = $sf->ascent->__getLastResponse();
-      $request = $sf->ascent->__getLastRequest();
       uc_ascent_record_queue($row['qid'], $time_start, $time_end, $request, $response, $result);
     
     }
@@ -315,7 +309,41 @@ function uc_ascent_salesforce_form_alter(&$form, $form_state, $form_id) {
     $form['panes']['comments']['comments']['#description'] = t('Maximum length 255 characters');
     $form['#validate'][] = 'uc_ascent_salesforce_form_validate';
   }
+  
+  // add a hook to submit data from the contact form
 
+  // the Ascent/Salesforce interface has a limit of 255 chars for this
+  if ($form_id == 'webform_client_form_246') {
+    $form['#submit'][] = 'uc_ascent_salesforce_webform_enter_submit';
+  }
+}
+
+// queue this into salesforce
+function uc_ascent_salesforce_webform_enter_submit($form, &$form_state) {
+  $sid = $form_state['values']['details']['sid'];
+  $nid = $form_state['values']['details']['nid'];
+  $submission = webform_get_submission($nid, $sid);
+  $webform_node = node_load($nid);
+  $fields=array('first_name'=>false, 'last_name'=>false, 'email_address'=>false);
+  foreach($webform_node->webform['components'] as $id => $component) {
+    if(array_key_exists($component['form_key'], $fields)) {
+      $fields[$component['form_key']] = $submission->data[$component['cid']]['value'][0];
+    }
+  }
+  if(in_array(false, $fields)) {
+    // error, dont record
+  } else {
+    $info['billingFirstName']=$fields['first_name'];
+    $info['billingLastName']=$fields['last_name'];
+    $info['deliveryFirstName']=$fields['first_name'];
+    $info['deliveryLastName']=$fields['last_name'];
+    $info['deliveryEmail']=$fields['email_address'];
+    $info['billingEmail']=$fields['email_address'];
+    $info['description']= "Added from contact form";
+    
+    db_query("INSERT INTO {uc_sf_queue} (queue_function, extra_data, order_id) VALUES ('%s', '%s', %d)", 'ACCOUNT_UPSERT', serialize($info), $order->order_id);    
+  }
+  $x=1;
 }
 
 function uc_ascent_salesforce_form_validate($form, &$form_state) {

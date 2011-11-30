@@ -132,129 +132,167 @@ function _uc_ascent_query_table($sf, $key, $value) {
 function _uc_ascent_get_shippinglineitem_product_code() {
   return 'Freight CP Domestic';
 }
+
 /**
- * Create the entry in salesforce, check to see if theres a contact by this name, 
- * if not, create an account and a contact (linked to this account)
- * @param unknown_type $sf
- * @param unknown_type $order
- * @return the contact ID of this person in SF
+ * update all the other parameters on a given account/contact ID pair
+ * @param sInterface $sf
+ * @param sfObject $accountID
+ * @param sfObject $contactID
+ * @param ubercartOrder $order
  */
-function _uc_ascent_salesforce_account_upsert_contact_from_order($sf, $order) {
- 
+function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $order) {
+  
   // people have a nasty habbit of changing things
   $lookups['EXP'] =_uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "EXP");
   $lookups['FRE'] =_uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE");
   $lookups['Accounts Payable'] = _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Payable");
   $lookups['Accounts Receivable'] = _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Receivable");  
   $lookups['Consumer Products']  = _uc_ascent_query_table($sf, "c2g__CODADimension1__c", "Consumer Products");
-  
+
   foreach($lookups as $field=> $lookup) {
     if(!strlen($lookup)) {
       uc_ascent_report_error($sf, 'Account checked failed', $field. " field value is missing");
-      return false;
+//      return false;
     }      
   }
-    
+
+  $delivery_zone = uc_get_zone_code($order->delivery_zone);
+  $delivery_country = uc_get_country_data(array (
+    'country_id' => $order->delivery_country 
+  ));
+  $billing_zone = uc_get_zone_code($order->billing_zone);
+  $billing_country = uc_get_country_data(array (
+    'country_id' => $order->billing_country 
+  ));
   
-  // make sure we escape strings in this query, these don't get automatically escaped
-  $delivery_first_name = addslashes($order->delivery_first_name);
-  $delivery_last_name = addslashes($order->delivery_last_name);
+  // update the Account , create the update object
   
-  // sometimes staff enter sales for a customer, and dont get their email address
-  if(strlen($order->primary_email)) {
-    $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
-                              FirstName = '{$delivery_first_name}' 
-                              AND LastName = '{$delivery_last_name}'
-                              AND Email = '{$order->primary_email}'");
+  $sObject1 = new stdClass();
+  $sObject1->Id = $accountId;
+  $sObject1->BillingCity = $order->billing_city ;
+  $sObject1->BillingCountry = $billing_country [0] ['country_name'] ; 
+  $sObject1->BillingPostalCode = $order->billing_postal_code ; 
+  $sObject1->BillingState = $billing_zone ;
+  $sObject1->BillingStreet = $order->billing_street1 . ' ' . $order->billing_street2 ; 
+  $sObject1->Phone = $order->billing_phone ; 
+  $sObject1->ShippingCity = $order->billing_city ; 
+  $sObject1->ShippingState = $delivery_zone ; 
+  $sObject1->ShippingCountry = $delivery_country [0] ['country_name'] ; 
+  $sObject1->ShippingPostalCode = $order->delivery_postal_code ; 
+  $sObject1->ShippingStreet = $order->delivery_street1 . ' ' . $order->delivery_street2 ;
+
+  // Extra custom fields
+  //if you change the parameters in _uc_ascent_query_table calls make sure to change the tests in the admin check
+  $sObject1->PBSI__Payment_Terms__c = 'Cash';
+  $sObject1->Current_Payment_Terms__c = 'Cash';
+  $sObject1->c2g__CODAAccountsPayableControl__c = $lookups['Accounts Payable'];
+  $sObject1->c2g__CODAAccountsReceivableControl__c = $lookups['Accounts Receivable'];
+  $sObject1->c2g__CODAVATStatus__c = 'Home';
+  $sObject1->c2g__CODADimension1__c = $lookups['Consumer Products'];
+  $sObject1->c2g__CODASalesTaxStatus__c = 'Exempt from Qualifying Products';      
+  $sObject1->c2g__CODATaxCalculationMethod__c = 'Gross';
+  $sObject1->c2g__CODAECCountryCode__c = 'GB'; 
+
+  
+  switch($order->currency) {
+    case 'AUD':
+      $sObject1->c2g__CODATaxCode1__c = $lookups['FRE'];
+      $sObject1->c2g__CODAInputVATCode__c =  $lookups['FRE'];
+      $sObject1->c2g__CODAOutputVATCode__c = $lookups['FRE'];
+      $sObject1->CurrencyIsoCode = 'AUD';           
+    break;
+    case 'USD':        
+      $sObject1->c2g__CODATaxCode1__c = $lookups['EXP'];
+      $sObject1->c2g__CODAInputVATCode__c =  $lookups['EXP'];
+      $sObject1->c2g__CODAOutputVATCode__c = $lookups['EXP'];
+      $sObject1->CurrencyIsoCode = 'USD';                   
+    break;      
+  }
+
+  if ( $updateResponse = $sf->update(array($sObject1), "Account" ) ) {
+    if(!$updateResponse[0]->success) {
+      return false;
+    }
   } else {
-    $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
-                              FirstName = '{$delivery_first_name}' 
-                              AND LastName = '{$delivery_last_name}'");    
+    return false;
   }
   
+  // create the contact update object
+  $sObject1 = new stdClass();
+  $sObject1->Id = $contactId;
+  $sObject->Homephone = $order->delivery_phone; 
+  $sObject->MailingCity = $order->delivery_city; 
+  $sObject->MailingState = $delivery_zone;
+  $sObject->MailingCountry = $delivery_country [0] ['country_name']; 
+  $sObject->MailingPostalCode = $order->delivery_postal_code;
+  $sObject->MailingStreet = $order->delivery_street1 . ' ' . $order->delivery_street2; 
+  $sObject->MobilePhone = $order->delivery_phone; 
+  $sObject->Customer_Type__c = 'Consumer Direct: Online';
+  
+  if ( $updateResponse = $sf->update(array($sObject1), "Contact" ) ) {
+    return $updateResponse[0]->success;
+  }
+  
+  return false;
+}
+/**
+ * Upsert a very primitive base record
+ * this could be calle from webform type, or could be a primer for later updates
+ * 
+ * delivery details are Contact
+ * billing details are Account
+ * 
+ * @return the accountID && contactID of this person in SF
+ */
+function _uc_ascent_salesforce_account_upsert_contact($sf, $billingFirstName, $billingLastName, 
+                                                           $deliveryFirstName, $deliveryLastName,
+                                                           $deliveryEmail, $billingEmail, 
+                                                           $description="Added from website") {
+ 
+  // check for a Contact that exists with this delivery
+  
+  // make sure we escape strings in this query, these don't get automatically escaped
+  $q_deliveryFirstName = addslashes(ucfirst(strtolower(trim($deliveryFirstName))));
+  $q_deliveryLastName = addslashes(ucfirst(strtolower(trim($deliveryLastName))));
+  
+  // sometimes staff enter sales for a customer, and dont get their email address
+  if(strlen($deliveryEmail)) {
+    $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
+                              FirstName = '{$q_deliveryFirstName}' 
+                              AND LastName = '{$q_deliveryLastName}'
+                              AND Email = '{$deliveryEmail}'");
+  } else {
+    $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
+                              FirstName = '{$q_deliveryFirstName}' 
+                              AND LastName = '{$q_deliveryLastName}'");    
+  }
+  
+  // if no contact was matched
+  // create an Account then the Contact with the new accountID to link it
   if ($result->size == 0) {
-    $delivery_zone = uc_get_zone_code($order->delivery_zone);
-    $delivery_country = uc_get_country_data(array (
-      'country_id' => $order->delivery_country 
-    ));
-    $billing_zone = uc_get_zone_code($order->billing_zone);
-    $billing_country = uc_get_country_data(array (
-      'country_id' => $order->billing_country 
-    ));
     
     // create the Account for this
     $record = array (
-      'BillingCity' => $order->billing_city, 
-      'BillingCountry' => $billing_country [0] ['country_name'], 
-      'BillingPostalCode' => $order->billing_postal_code, 
-      'BillingState' => $billing_zone, 
-      'BillingStreet' => $order->billing_street1 . ' ' . $order->billing_street2, 
-      'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}", 
-      'Name' => ucfirst(strtolower($order->billing_first_name)).' '.ucfirst(strtolower($order->billing_last_name)),    
-      'Phone' => $order->billing_phone, 
-      'ShippingCity' => $order->billing_city, 
-      'ShippingState' => $delivery_zone, 
-      'ShippingCountry' => $delivery_country [0] ['country_name'], 
-      'ShippingPostalCode' => $order->delivery_postal_code, 
-      'ShippingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2,
-    
-      // Extra custom fields
-      //if you change the parameters in _uc_ascent_query_table calls make sure to change the tests in the admin check
       'Type' => 'Customer',
-      'Sub_Type__c' => 'Consumer Direct:Online',
-      'PBSI__Payment_Terms__c' => 'Cash',
-      'Current_Payment_Terms__c' => 'Cash',
-      'c2g__CODAAccountsPayableControl__c' => $lookups['Accounts Payable'],
-      'c2g__CODAAccountsReceivableControl__c' => $lookups['Accounts Receivable'],
-      'c2g__CODAVATStatus__c' => 'Home',
-      'c2g__CODADimension1__c' => $lookups['Consumer Products'],
-      'c2g__CODASalesTaxStatus__c' => 'Exempt from Qualifying Products',      
-      'c2g__CODATaxCalculationMethod__c' => 'Gross',
-      'c2g__CODAECCountryCode__c' => 'GB'
- 
+      'Description' => $description,
+      'Name' => ucfirst(strtolower($billingFirstName)).' '.ucfirst(strtolower($billingLastName)),
     );
-    
-    switch($order->currency) {
-      case 'AUD':
-        $record['c2g__CODATaxCode1__c'] = $lookups['FRE'];
-        $record['c2g__CODAInputVATCode__c'] =  $lookups['FRE'];
-        $record['c2g__CODAOutputVATCode__c'] = $lookups['FRE'];
-        $record['CurrencyIsoCode'] = 'AUD';           
-      break;
-      case 'USD':        
-        $record['c2g__CODATaxCode1__c'] = $lookups['EXP'];
-        $record['c2g__CODAInputVATCode__c'] =  $lookups['EXP'];
-        $record['c2g__CODAOutputVATCode__c'] = $lookups['EXP'];
-        $record['CurrencyIsoCode'] = 'USD';                   
-      break;      
-    }
-    
-    
     $response = $sf->create(array (
       $record 
     ), 'Account');
-    
-    // print_r($response);
+  
     
     if(! $return['accountId'] = $response[0]->id) {
-      uc_ascent_report_error($sf, 'Creating account failed', "Creeating account for {$order->order_id} failed");
+      uc_ascent_report_error($sf, 'Creating account failed', "Creating account failed");
       return false;      
     }
-    
+    // now the contact (actual Delivery details)
     $record = array (
-      'Description' => "Added from purchase on ChiaCo Website, order number {$order->order_id}", 
-      'Email' => $order->primary_email, 
-      'Firstname' => ucfirst(strtolower($order->delivery_first_name)), 
-      'Homephone' => $order->delivery_phone, 
-      'Lastname' => ucfirst(strtolower($order->delivery_last_name)), 
-      'MailingCity' => $order->delivery_city, 
-      'MailingState' => $delivery_zone, 
-      'MailingCountry' => $delivery_country [0] ['country_name'], 
-      'MailingPostalCode' => $order->delivery_postal_code, 
-      'MailingStreet' => $order->delivery_street1 . ' ' . $order->delivery_street2, 
-      'MobilePhone' => $order->delivery_phone, 
+      'Description' => $description,
+      'FirstName' => ucfirst(strtolower($deliveryFirstName)), 
+      'LastName' => ucfirst(strtolower($deliveryLastName)),    
+      'Email' => $deliveryEmail,     
       'AccountId' => $response [0]->id,
-      'Customer_Type__c' => 'Consumer Direct: Online',
     );
     
     $response = $sf->create(array (
