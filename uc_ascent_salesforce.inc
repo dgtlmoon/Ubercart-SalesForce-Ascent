@@ -37,24 +37,17 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf
     $salesTax = 10;
   }
 
-
-  
-  
   // the API accepts discount as a % not an arbitrary number
   // work out what % this discount is from the total amount of the order
   
-  
-  if ($result = $sf->addSalesOrder( $sf_account_id, 
+  $result = $sf->addSalesOrder( $sf_account_id, 
                                     $sf_contact_id, 
                                     $shippingInstructions, 
                                     $shipping_total, 
                                     $salesTax 
-                                    )) {
-          
-    
-    return $result;
-  }
-  return false;
+                                    );
+     
+  return $result;
 }
 
 
@@ -64,14 +57,24 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf
  * @param object $order
  */
 function _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $soID, $order) {
-
-  if ( $result = $sf->queryAll("Select PBSI__Order_Date__c from PBSI__PBSI_Sales_Order__c where Id = '{$soID}'") ) {
-    if(count($result->records) == 0) {
-       uc_ascent_report_error($sf, 'Query SalesForce table', "$soID does not exist in SalesForce/Ascent table Sales Orders");
-       return false;
+  
+  try {
+    if ($result = $sf->queryAll("Select PBSI__Order_Date__c from PBSI__PBSI_Sales_Order__c where Id = '{$soID}'")) {
+      if (count($result->records) == 0) {
+        uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), false);
+        uc_ascent_report_error($sf, 'Query SalesForce table', "$soID does not exist in SalesForce/Ascent table Sales Orders");
+        return false;
+      }
     }
+  
   }
-   
+  catch (SoapFault $fault) {
+    uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), false);
+    return false;
+  }
+  
+  uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), true);
+  
   $original_date = $result->records[0]->fields->PBSI__Order_Date__c;
   
   $sObject1 = new stdClass();
@@ -85,10 +88,18 @@ function _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $soID, $order) 
   // new method of tellign ascent about a discount, lodge them as a negative misc charge (crap)
   $sObject1->PBSI__Misc_Charges__c = uc_ascent_salesforce_total_lineitem_type($order, "coupon");
   
-  if ( $updateResponse = $sf->update(array($sObject1),"PBSI__PBSI_Sales_Order__c") ) {
-    return $updateResponse[0]->success;
-  }
+  try {
+    
+    if ( $updateResponse = $sf->update(array($sObject1),"PBSI__PBSI_Sales_Order__c") ) {
+      uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), true);
+      return $updateResponse[0]->success;
+    }
   
+  } catch (SoapFault $fault) {
+    uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), false);
+    return false;
+  }
+    
   return false;
                                 
 }
@@ -115,14 +126,20 @@ function _uc_ascent_query_table($sf, $key, $value) {
 	if($ids[$key.$value]) {
 		return $ids[$key.$value];
 	}
-	
-  if ( $result = $sf->queryAll("Select Id from {$key} where Name = '{$value}'") ) {
-    if(count($result->records) == 0) {
-	     uc_ascent_report_error($sf, 'Query SalesForce table', "$value does not exist in SalesForce/Ascent table $key");
-    }
-  	$ids[$key.$value] = $result->records[0]->Id;
-  } 
+	try {
+    if ( $result = $sf->queryAll("Select Id from {$key} where Name = '{$value}'") ) {
+      if(count($result->records) == 0) {
+  	     uc_ascent_report_error($sf, 'Query SalesForce table', "$value does not exist in SalesForce/Ascent table $key");
+      }
+    	$ids[$key.$value] = $result->records[0]->Id;
+    } 
 
+  } catch (SoapFault $fault) {
+    uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), false);
+    return false;
+  }
+  
+  uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), true);
   return $ids[$key.$value];
 	
 }
@@ -150,7 +167,7 @@ function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $ord
   foreach($lookups as $field=> $lookup) {
     if(!strlen($lookup)) {
       uc_ascent_report_error($sf, 'Account checked failed', $field. " field value is missing");
-//      return false;
+      return false;
     }      
   }
 
@@ -206,12 +223,19 @@ function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $ord
       $sObject1->CurrencyIsoCode = 'USD';                   
     break;      
   }
-
-  if ( $updateResponse = $sf->update(array($sObject1), "Account" ) ) {
-    if(!$updateResponse[0]->success) {
+  
+  try {
+    if ( $updateResponse = $sf->update(array($sObject1), "Account" ) ) {
+      uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), true);
+      if(!$updateResponse[0]->success) {
+        return false;
+      }
+    } else {
       return false;
     }
-  } else {
+  
+  } catch (SoapFault $fault) {
+    uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), false);
     return false;
   }
   
@@ -226,11 +250,17 @@ function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $ord
   $sObject->MailingStreet = $order->delivery_street1 . ' ' . $order->delivery_street2; 
   $sObject->MobilePhone = $order->delivery_phone; 
   $sObject->Customer_Type__c = 'Consumer Direct: Online';
+  try {
+    if ( $updateResponse = $sf->update(array($sObject1), "Contact" ) ) {
+      uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), true);
+      return $updateResponse[0]->success;
+    }
   
-  if ( $updateResponse = $sf->update(array($sObject1), "Contact" ) ) {
-    return $updateResponse[0]->success;
+  } catch (SoapFault $fault) {
+    uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), false);
+    return false;
   }
-  
+    
   return false;
 }
 /**
@@ -245,7 +275,8 @@ function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $ord
 function _uc_ascent_salesforce_account_upsert_contact($sf, $billingFirstName, $billingLastName, 
                                                            $deliveryFirstName, $deliveryLastName,
                                                            $deliveryEmail, $billingEmail, 
-                                                           $description="Added from website") {
+                                                           $description="Added from website",
+                                                           $billingPhone ="", $deliveryPhone="") {
  
   // check for a Contact that exists with this delivery
   
@@ -254,17 +285,24 @@ function _uc_ascent_salesforce_account_upsert_contact($sf, $billingFirstName, $b
   $q_deliveryLastName = addslashes(ucfirst(strtolower(trim($deliveryLastName))));
   
   // sometimes staff enter sales for a customer, and dont get their email address
-  if(strlen($deliveryEmail)) {
-    $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
-                              FirstName = '{$q_deliveryFirstName}' 
-                              AND LastName = '{$q_deliveryLastName}'
-                              AND Email = '{$deliveryEmail}'");
-  } else {
-    $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
-                              FirstName = '{$q_deliveryFirstName}' 
-                              AND LastName = '{$q_deliveryLastName}'");    
+  try {
+    if(strlen($deliveryEmail)) {
+      $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
+                                FirstName = '{$q_deliveryFirstName}' 
+                                AND LastName = '{$q_deliveryLastName}'
+                                AND Email = '{$deliveryEmail}'");
+    } else {
+      $result = $sf->queryAll("SELECT AccountId, Id, FirstName, LastName FROM Contact WHERE 
+                                FirstName = '{$q_deliveryFirstName}' 
+                                AND LastName = '{$q_deliveryLastName}'");    
+    }
+  } catch (SoapFault $fault) {      
+     uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), false);
+     return false;      
   }
   
+  uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), true);
+    
   // if no contact was matched
   // create an Account then the Contact with the new accountID to link it
   if ($result->size == 0) {
@@ -273,12 +311,20 @@ function _uc_ascent_salesforce_account_upsert_contact($sf, $billingFirstName, $b
     $record = array (
       'Type' => 'Customer',
       'Description' => $description,
+      'Phone' => $billingPhone,
       'Name' => ucfirst(strtolower($billingFirstName)).' '.ucfirst(strtolower($billingLastName)),
     );
-    $response = $sf->create(array (
-      $record 
-    ), 'Account');
+    try {
+      $response = $sf->create(array (
+        $record 
+      ), 'Account');
+    } catch (SoapFault $fault) {      
+      uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), false);
+      return false;      
+    }
   
+    uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), true);
+   
     
     if(! $return['accountId'] = $response[0]->id) {
       uc_ascent_report_error($sf, 'Creating account failed', "Creating account failed");
@@ -289,15 +335,24 @@ function _uc_ascent_salesforce_account_upsert_contact($sf, $billingFirstName, $b
       'Description' => $description,
       'FirstName' => ucfirst(strtolower($deliveryFirstName)), 
       'LastName' => ucfirst(strtolower($deliveryLastName)),    
-      'Email' => $deliveryEmail,     
+      'Email' => $deliveryEmail, 
+      'HomePhone' => $billingPhone,    
+      'MobilePhone' => $billingPhone,
       'AccountId' => $response [0]->id,
     );
-    
-    $response = $sf->create(array (
-      $record 
-    ), 'Contact');
-    $return ['contactId'] = $response [0]->id;
-  
+    try {
+      $response = $sf->create(array (
+        $record 
+      ), 'Contact');
+      $return ['contactId'] = $response [0]->id;
+      
+    } catch (SoapFault $fault) {      
+         uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), false);
+         return false;      
+    }
+      
+    uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), true);
+   
   }
   else {
     $return ['accountId'] = $result->records[0]->fields->AccountId;
@@ -481,9 +536,11 @@ class AscentSFClient extends SforceBaseClient {
       $result = $this->ascent->addSOLine($values);
     
     }
-    catch (SoapFault $fault) {
-      throw new SoapFault(1, $fault);
+    catch (SoapFault $fault) {      
+      uc_ascent_record_queue(false, $this->ascent->__getLastRequest(), $this->ascent->__getLastResponse(), false);      
     }
+    
+    uc_ascent_record_queue(false, $this->ascent->__getLastRequest(), $this->ascent->__getLastResponse(), true);
     
     return $result->result;
   }
@@ -515,8 +572,7 @@ class AscentSFClient extends SforceBaseClient {
     
     $this->_setSessionHeader($this->ascent);
     
-    try {
-      
+    try {      
       $values = array (
         'AccountId' => $accountId, 
         'contactId' => $contactId, 
@@ -526,12 +582,15 @@ class AscentSFClient extends SforceBaseClient {
         'discount' => 0, // discount should always be 0 because now its handled as PBSI__Misc_Charges__c 
       );
       
-      $result = $this->ascent->addSO($values);
-    
+      $result = $this->ascent->addSO($values);    
     }
     catch (SoapFault $fault) {
-      throw new SoapFault(1, $fault);
+      uc_ascent_record_queue(false, $this->ascent->__getLastRequest(), $this->ascent->__getLastResponse(), false);
+      return false;
     }
+    
+    uc_ascent_record_queue(false, $this->ascent->__getLastRequest(), $this->ascent->__getLastResponse(), true);
+    
     // @todo: update any additional fields here?
     return $result->result;
   }

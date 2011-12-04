@@ -145,11 +145,16 @@ function uc_ascent_connect($skip_cron_check = false) {
   return $sf;
 }
 
-function uc_ascent_record_queue($qid, $time_start, $time_end, $request, $response, $result) {
+function uc_ascent_record_queue($this_qid, $request, $response, $result) {
+  global $qid;
+  if(!$this_qid) {
+    $this_qid = $qid;
+  } 
+  $time_start = microtime(true);
   db_query("INSERT INTO {uc_sf_queue_log} 
-                  (qid, request_start_time, request_end_time, 
+                  (qid, request_start_time,  
                     request_post, request_reply, result_status)
-                  VALUES (%d, %d, %d, '%s', '%s',%d)", $qid, $time_start, $time_end, $request, $response, $result);
+                  VALUES (%d, %d, '%s', '%s',%d)", $this_qid, $time_start, $request, $response, $result);
 }
 
 
@@ -160,7 +165,7 @@ function uc_ascent_record_queue($qid, $time_start, $time_end, $request, $respons
  * @param integer $parent jobs have basic hierarchy
  */
 function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
-  
+  global $qid; // handy for logging
   // run each order
   // if a parent is specified use that, else just process as usual
   if ($parent) {
@@ -175,8 +180,7 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
     $time_start = time();
     $request = "";
     $response = "";
-    
-    try {
+    $qid = $row['qid'];
       switch ($row['queue_function']) {
         case 'ACCOUNT_UPSERT':
           // record a new entry for this request
@@ -189,7 +193,9 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
                                                                     , $info['deliveryLastName']
                                                                     , $info['deliveryEmail']
                                                                     , $info['billingEmail']
-                                                                    , $info['description'] )) {
+                                                                    , $info['description']
+                                                                    , $info['billingPhone']
+                                                                    , $info['deliveryPhone'] )) {
             $info = $info+$result;          
             // record the status and set the flag as 1 = processed
             db_query("UPDATE {uc_sf_queue} SET extra_data = '%s', q_status=1 WHERE qid='%d'", serialize($info), $row['qid']);
@@ -286,19 +292,9 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
       $time_end = time();
       // update the last attempt time
       db_query("UPDATE {uc_sf_queue} SET request_recent_time = %d where qid = %d", $time_end, $row['qid']);
-      
-      // record this into the queue log
-      uc_ascent_record_queue($row['qid'], $time_start, $time_end, $request, $response, $result);
-    
-    }
-    catch (SoapFault $err) {
-      uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", $err);
-      uc_ascent_record_queue($row['qid'], $time_start, $time_end, $request, $response, $result);
-    
-    }
-    
-    // process any children of this
-    uc_ascent_salesforce_process_jobs($sf, $row['qid']);
+
+      // process any children of this
+      uc_ascent_salesforce_process_jobs($sf, $row['qid']);
   }
 }
 
@@ -324,7 +320,7 @@ function uc_ascent_salesforce_webform_enter_submit($form, &$form_state) {
   $nid = $form_state['values']['details']['nid'];
   $submission = webform_get_submission($nid, $sid);
   $webform_node = node_load($nid);
-  $fields=array('first_name'=>false, 'last_name'=>false, 'email_address'=>false);
+  $fields=array('first_name'=>false, 'last_name'=>false, 'email_address'=>false, 'phone_number'=>false);
   foreach($webform_node->webform['components'] as $id => $component) {
     if(array_key_exists($component['form_key'], $fields)) {
       $fields[$component['form_key']] = $submission->data[$component['cid']]['value'][0];
@@ -339,11 +335,12 @@ function uc_ascent_salesforce_webform_enter_submit($form, &$form_state) {
     $info['deliveryLastName']=$fields['last_name'];
     $info['deliveryEmail']=$fields['email_address'];
     $info['billingEmail']=$fields['email_address'];
+    $info['billingPhone']=$fields['phone_number'];
+    $info['deliveryPhone']=$fields['phone_number'];
     $info['description']= "Added from contact form";
     
     db_query("INSERT INTO {uc_sf_queue} (queue_function, extra_data, order_id) VALUES ('%s', '%s', %d)", 'ACCOUNT_UPSERT', serialize($info), $order->order_id);    
   }
-  $x=1;
 }
 
 function uc_ascent_salesforce_form_validate($form, &$form_state) {
