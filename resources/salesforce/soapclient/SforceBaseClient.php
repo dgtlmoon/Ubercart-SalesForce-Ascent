@@ -39,7 +39,7 @@ require_once ('SforceHeaderOptions.php');
  * @package SalesforceSoapClient
  */
 class SforceBaseClient {
-	protected $sforce;
+	public $sforce;
 	protected $sessionId;
 	protected $location;
 	protected $version = '20.0';
