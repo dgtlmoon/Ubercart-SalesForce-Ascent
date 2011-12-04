@@ -117,3 +117,16 @@ function uc_ascent_salesforce_uninstall() {
   drupal_uninstall_schema('uc_ascent_salesforce');
 }
 
+// change the column type for logs to something with better resolution
+function uc_ascent_salesforce_update_6001() {
+  $ret = array();
+// drupal 6 cant handle double types (?)
+//  db_change_field($ret, 'uc_sf_queue_log', 'request_start_time', 'request_start_time', array('type' => 'float:big', 'not null' => TRUE, 'default' => 0));
+//  db_change_field($ret, 'uc_sf_queue_log', 'request_end_time', 'request_end_time', array('type' => 'float:big', 'not null' => TRUE, 'default' => 0));
+  
+  db_query("ALTER TABLE {uc_sf_queue_log} CHANGE request_start_time request_start_time DOUBLE (11,4)");
+  db_query("ALTER TABLE {uc_sf_queue_log} CHANGE request_end_time request_end_time DOUBLE (11,4)");
+
+  return $ret;
+
+}
