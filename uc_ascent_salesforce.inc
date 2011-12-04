@@ -37,11 +37,7 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf
     $salesTax = 10;
   }
 
-  $discount_amount = abs(uc_ascent_salesforce_total_lineitem_type($order, "coupon"));
-  
-  $amount =  uc_order_get_total($order, true);
-  
-  $percent_discount =  ($discount_amount/$amount) *100;
+
   
   
   // the API accepts discount as a % not an arbitrary number
@@ -52,8 +48,8 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf
                                     $sf_contact_id, 
                                     $shippingInstructions, 
                                     $shipping_total, 
-                                    $salesTax, 
-                                    $percent_discount)) {
+                                    $salesTax 
+                                    )) {
           
     
     return $result;
@@ -85,9 +81,11 @@ function _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $soID, $order) 
   $sObject1->PBSI__Due_Date__c = $original_date;
   $sObject1->Required_Delivery_Date__c = $original_date;
   $sObject1->PBSI__Invoice_Date__c = $original_date;
+
+  // new method of tellign ascent about a discount, lodge them as a negative misc charge (crap)
+  $sObject1->PBSI__Misc_Charges__c = uc_ascent_salesforce_total_lineitem_type($order, "coupon");
   
-  
-  if ( $updateResponse = $sf->update(array($sObject1), "PBSI__PBSI_Sales_Order__c" ) ) {
+  if ( $updateResponse = $sf->update(array($sObject1),"PBSI__PBSI_Sales_Order__c") ) {
     return $updateResponse[0]->success;
   }
   
@@ -143,7 +141,7 @@ function _uc_ascent_get_shippinglineitem_product_code() {
 function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $order) {
   
   // people have a nasty habbit of changing things
-  $lookups['EXP'] =_uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "EXP");
+  //$lookups['EXP'] =_uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "EXP"); //@TODO not sure about this one
   $lookups['FRE'] =_uc_ascent_query_table($sf, "c2g__codaTaxCode__c", "FRE");
   $lookups['Accounts Payable'] = _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Payable");
   $lookups['Accounts Receivable'] = _uc_ascent_query_table($sf, "c2g__codaGeneralLedgerAccount__c", "Accounts Receivable");  
@@ -202,9 +200,9 @@ function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $ord
       $sObject1->CurrencyIsoCode = 'AUD';           
     break;
     case 'USD':        
-      $sObject1->c2g__CODATaxCode1__c = $lookups['EXP'];
-      $sObject1->c2g__CODAInputVATCode__c =  $lookups['EXP'];
-      $sObject1->c2g__CODAOutputVATCode__c = $lookups['EXP'];
+      //$sObject1->c2g__CODATaxCode1__c = $lookups['EXP'];
+      //$sObject1->c2g__CODAInputVATCode__c =  $lookups['EXP'];
+      //$sObject1->c2g__CODAOutputVATCode__c = $lookups['EXP'];
       $sObject1->CurrencyIsoCode = 'USD';                   
     break;      
   }
@@ -467,7 +465,7 @@ class AscentSFClient extends SforceBaseClient {
    * 
    */
   
-  public function addSalesOrderLineItem($soId, $itemId, $price, $quantity, $discount) {
+  public function addSalesOrderLineItem($soId, $itemId, $price, $quantity) {
     $this->_setSessionHeader($this->ascent);
     
     try {
@@ -477,7 +475,7 @@ class AscentSFClient extends SforceBaseClient {
         'itemId' => $itemId, 
         'price' => $price, //@todo each is it?
         'quantity' => $quantity, 
-        'discount' => $discount 
+        'discount' => 0 
       );
       
       $result = $this->ascent->addSOLine($values);
@@ -513,7 +511,7 @@ class AscentSFClient extends SforceBaseClient {
    * </xsd:complexType>
    * </xsd:element>
    */
-  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost=0.00, $salesTax =0.00, $discount=0.00) {
+  public function addSalesOrder($accountId, $contactId, $shippingInstructions, $shippingCost=0.00, $salesTax =0.00) {
     
     $this->_setSessionHeader($this->ascent);
     
@@ -525,7 +523,7 @@ class AscentSFClient extends SforceBaseClient {
         'shippingInstructions' => strip_tags($shippingInstructions), 
         'ShippingCost' => $shippingCost, 
         'salesTax' => $salesTax, 
-        'discount' => $discount, 
+        'discount' => 0, // discount should always be 0 because now its handled as PBSI__Misc_Charges__c 
       );
       
       $result = $this->ascent->addSO($values);
