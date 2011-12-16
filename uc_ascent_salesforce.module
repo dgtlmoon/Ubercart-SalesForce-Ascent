@@ -278,8 +278,12 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
             
             $order_shipping->model = _uc_ascent_get_shippinglineitem_product_code();
             $original_price = uc_ascent_salesforce_total_lineitem_type($order, 'shipping');
-            // actual price should not include the 10%
-            $order_shipping->price = $original_price / 1.10;
+            if($order->currency == 'AUD') {
+              // actual price should not include the 10%
+              $order_shipping->price = $original_price / 1.10;
+            } else {
+              $order_shipping->price = $original_price;
+            }
             
             $order_shipping->qty = 1; // one shipping unit
             
