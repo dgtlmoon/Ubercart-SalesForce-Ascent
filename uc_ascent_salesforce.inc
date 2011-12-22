@@ -249,7 +249,7 @@ function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $ord
   $sObject->MailingPostalCode = $order->delivery_postal_code;
   $sObject->MailingStreet = $order->delivery_street1 . ' ' . $order->delivery_street2; 
   $sObject->MobilePhone = $order->delivery_phone; 
-  $sObject->Customer_Type__c = 'Consumer Direct: Online';
+  $sObject->Customer_Type__c = 'Consumer Direct:Online';
   try {
     if ( $updateResponse = $sf->update(array($sObject1), "Contact" ) ) {
       uc_ascent_record_queue(false, $sf->sforce->__getLastRequest(), $sf->sforce->__getLastResponse(), true);
