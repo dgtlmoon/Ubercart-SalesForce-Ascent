@@ -34,7 +34,7 @@ function _uc_ascent_salesforce_salesforce_enter($sf, $order, $sf_account_id, $sf
   if($order->currency == 'AUD') {
     // shipping total includes 10% of the tax
     // so record that
-    $salesTax = 10;
+    // $salesTax = 10; //@note: disabled, according to teresa/andreea this is not required anymore
   }
 
   // the API accepts discount as a % not an arbitrary number
