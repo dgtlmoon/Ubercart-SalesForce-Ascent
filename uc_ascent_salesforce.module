@@ -222,6 +222,7 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
           uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "Failed to add account");
         }
         break;
+
       case 'SALESORDER_ENTER':
         // grab the SF contact ID from any previous update to this
         $sf_id = unserialize(db_result(db_query("SELECT extra_data FROM uc_sf_queue WHERE order_id = %d AND queue_function = 'ACCOUNT_UPSERT' ", $order->order_id)));
@@ -331,11 +332,19 @@ function uc_ascent_salesforce_form_alter(&$form, $form_state, $form_id) {
     $form['#validate'][] = 'uc_ascent_salesforce_form_validate';
   }
 
-  // add a hook to submit data from the contact form
+
+  // @todo some cute interface for configuring which webform fields go to which SF records
+  //       would be the obvious thing to improve here
 
   // the Ascent/Salesforce interface has a limit of 255 chars for this
   if ($form_id == 'webform_client_form_246') {
+    // contact form
     $form['#submit'][] = 'uc_ascent_salesforce_webform_enter_submit';
+  }
+
+  // subscribe form
+  if ($form_id == 'webform_client_form_409') {
+    $form['#submit'][] = 'uc_ascent_salesforce_webform_subscribe_enter_submit';
   }
 }
 
@@ -345,6 +354,8 @@ function uc_ascent_salesforce_webform_enter_submit($form, &$form_state) {
   $nid = $form_state['values']['details']['nid'];
   $submission = webform_get_submission($nid, $sid);
   $webform_node = node_load($nid);
+
+  // get the data from the submission that is keyed by these types that we are after
   $fields = array('first_name' => FALSE, 'last_name' => FALSE, 'email_address' => FALSE, 'phone_number' => FALSE);
   foreach ($webform_node->webform['components'] as $id => $component) {
     if (array_key_exists($component['form_key'], $fields)) {
@@ -365,7 +376,50 @@ function uc_ascent_salesforce_webform_enter_submit($form, &$form_state) {
     $info['deliveryPhone'] = $fields['phone_number'];
     $info['description'] = "Added from contact form";
 
-    db_query("INSERT INTO {uc_sf_queue} (queue_function, extra_data, order_id) VALUES ('%s', '%s', %d)", 'ACCOUNT_UPSERT', serialize($info), $order->order_id);
+    db_query("INSERT INTO {uc_sf_queue} (queue_function, extra_data, order_id) VALUES ('%s', '%s', %d)", 'ACCOUNT_UPSERT', serialize($info), 0);
+  }
+}
+
+// queue this into salesforce
+function uc_ascent_salesforce_webform_subscribe_enter_submit($form, &$form_state) {
+  $sid = $form_state['values']['details']['sid'];
+  $nid = $form_state['values']['details']['nid'];
+  $submission = webform_get_submission($nid, $sid);
+  $webform_node = node_load($nid);
+
+  // get the data from the submission that is keyed by these types that we are after
+  $fields = array(  'firstname' => FALSE,
+                    'surname' => FALSE,
+                    'address' => FALSE,
+                    'suburb' => FALSE,
+                    'state' => FALSE,
+                    'postcode' => FALSE,
+                    'country' => FALSE,
+                    'email_address' => FALSE);
+
+
+
+  foreach ($webform_node->webform['components'] as $id => $component) {
+    if (array_key_exists($component['form_key'], $fields)) {
+      $fields[$component['form_key']] = $submission->data[$component['cid']]['value'][0];
+    }
+  }
+  if (in_array(FALSE, $fields)) {
+    // error, dont record
+  }
+  else {
+    $info['billingFirstName'] = $fields['first_name'];
+    $info['billingLastName'] = $fields['surname'];
+    $info['deliveryFirstName'] = $fields['first_name'];
+    $info['deliveryLastName'] = $fields['surname'];
+    $info['deliveryEmail'] = $fields['email_address'];
+    $info['billingEmail'] = $fields['email_address'];
+    $info['billingPhone'] = '';
+    $info['deliveryPhone'] = '';
+    $info['description'] = "Added from subscribe form";
+
+
+    db_query("INSERT INTO {uc_sf_queue} (queue_function, extra_data, order_id) VALUES ('%s', '%s', %d)", 'ACCOUNT_UPSERT', serialize($info), 0);
   }
 }
 
