@@ -13,8 +13,7 @@ function uc_ascent_salesforce_menu() {
     'access arguments' => array(
       'administer store'
     ),
-    'file' => 'uc_ascent_salesforce.admin.inc',
-    'type' => MENU_DEFAULT_LOCAL_TASK
+    'file' => 'uc_ascent_salesforce.admin.inc'
   );
   $items['admin/store/settings/uc_salesforce/configure'] = array(
     'title' => 'API/Security Settings',
@@ -27,14 +26,18 @@ function uc_ascent_salesforce_menu() {
       'administer store'
     ),
     'file' => 'uc_ascent_salesforce.admin.inc',
-    'type' => MENU_LOCAL_TASK,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -10
   );
 
   $items['admin/store/settings/uc_salesforce/queue'] = array(
-    'title' => 'Queue Status', 'page callback' => 'uc_ascent_salesforce_queue_info', 'access arguments' => array(
+    'title' => 'Queue Status',
+    'page callback' => 'uc_ascent_salesforce_queue_info',
+    'access arguments' => array(
       'administer store'
-    ), 'file' => 'uc_ascent_salesforce.admin.inc', 'weight' => 1, 'type' => MENU_LOCAL_TASK
+    ), 'file' => 'uc_ascent_salesforce.admin.inc',
+    'weight' => 1,
+    'type' => MENU_LOCAL_TASK
   );
 
   $items['admin/store/settings/uc_salesforce/configcheck'] = array(
@@ -47,12 +50,16 @@ function uc_ascent_salesforce_menu() {
     'weight' => 1,
     'type' => MENU_LOCAL_TASK
   );
+
   $items['admin/store/settings/uc_salesforce/queue/%'] = array(
-    'title' => 'Queue Status', 'page callback' => 'uc_ascent_salesforce_queue_item_info', 'page arguments' => array(
-      5
-    ), 'access arguments' => array(
+    'title' => 'Queue Status',
+    'page callback' => 'uc_ascent_salesforce_queue_item_info',
+    'page arguments' => array(5),
+    'access arguments' => array(
       'administer store'
-    ), 'file' => 'uc_ascent_salesforce.admin.inc', 'weight' => 1, 'type' => MENU_CALLBACK
+    ), 'file' => 'uc_ascent_salesforce.admin.inc',
+    'weight' => 1,
+    'type' => MENU_CALLBACK
   );
 
   return $items;
