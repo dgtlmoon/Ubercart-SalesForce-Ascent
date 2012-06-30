@@ -78,7 +78,7 @@ function _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $soID, $order) 
 
   $sObject1 = new stdClass();
   $sObject1->Id = $soID;
-  $sObject1->PBSI__Customer_Purchase_Order__c = "Weborder #" . $order->order_id; //maximum 15 chars?
+  $sObject1->PBSI__Customer_Purchase_Order__c = $order->order_id; //maximum 15 chars?
   $sObject1->Payment_Status__c = "Paid";
   $sObject1->PBSI__Due_Date__c = $original_date;
   $sObject1->Required_Delivery_Date__c = $original_date;

@@ -107,7 +107,7 @@ function uc_ascent_salesforce_ca_action_upsert_account($order = FALSE) {
   $info['deliveryLastName'] = $order->delivery_last_name;
   $info['deliveryEmail'] = $order->primary_email;
   $info['billingEmail'] = $order->primary_email;
-  $info['description'] = "WebOrder #" . $order->order_id;
+  $info['description'] = $order->order_id;
 
   db_query("INSERT INTO {uc_sf_queue} (queue_function, extra_data, order_id) VALUES ('%s', '%s', %d)", 'ACCOUNT_UPSERT', serialize($info), $order->order_id);
 }
@@ -325,7 +325,6 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
 }
 
 function uc_ascent_salesforce_form_alter(&$form, $form_state, $form_id) {
-
   // the Ascent/Salesforce interface has a limit of 255 chars for this
   if ($form_id == 'uc_cart_checkout_form') {
     $form['panes']['comments']['comments']['#description'] = t('Maximum length 255 characters');
@@ -342,10 +341,7 @@ function uc_ascent_salesforce_form_alter(&$form, $form_state, $form_id) {
     $form['#submit'][] = 'uc_ascent_salesforce_webform_enter_submit';
   }
 
-  // subscribe form
-  if ($form_id == 'webform_client_form_409') {
-    $form['#submit'][] = 'uc_ascent_salesforce_webform_subscribe_enter_submit';
-  }
+
 }
 
 // queue this into salesforce
@@ -377,49 +373,7 @@ function uc_ascent_salesforce_webform_enter_submit($form, &$form_state) {
     $info['description'] = "Added from contact form";
 
     db_query("INSERT INTO {uc_sf_queue} (queue_function, extra_data, order_id) VALUES ('%s', '%s', %d)", 'ACCOUNT_UPSERT', serialize($info), 0);
-  }
-}
 
-// queue this into salesforce
-function uc_ascent_salesforce_webform_subscribe_enter_submit($form, &$form_state) {
-  $sid = $form_state['values']['details']['sid'];
-  $nid = $form_state['values']['details']['nid'];
-  $submission = webform_get_submission($nid, $sid);
-  $webform_node = node_load($nid);
-
-  // get the data from the submission that is keyed by these types that we are after
-  $fields = array(  'firstname' => FALSE,
-                    'surname' => FALSE,
-                    'address' => FALSE,
-                    'suburb' => FALSE,
-                    'state' => FALSE,
-                    'postcode' => FALSE,
-                    'country' => FALSE,
-                    'email_address' => FALSE);
-
-
-
-  foreach ($webform_node->webform['components'] as $id => $component) {
-    if (array_key_exists($component['form_key'], $fields)) {
-      $fields[$component['form_key']] = $submission->data[$component['cid']]['value'][0];
-    }
-  }
-  if (in_array(FALSE, $fields)) {
-    // error, dont record
-  }
-  else {
-    $info['billingFirstName'] = $fields['first_name'];
-    $info['billingLastName'] = $fields['surname'];
-    $info['deliveryFirstName'] = $fields['first_name'];
-    $info['deliveryLastName'] = $fields['surname'];
-    $info['deliveryEmail'] = $fields['email_address'];
-    $info['billingEmail'] = $fields['email_address'];
-    $info['billingPhone'] = '';
-    $info['deliveryPhone'] = '';
-    $info['description'] = "Added from subscribe form";
-
-
-    db_query("INSERT INTO {uc_sf_queue} (queue_function, extra_data, order_id) VALUES ('%s', '%s', %d)", 'ACCOUNT_UPSERT', serialize($info), 0);
   }
 }
 
