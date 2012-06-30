@@ -84,6 +84,22 @@ function _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $soID, $order) 
   $sObject1->Required_Delivery_Date__c = $original_date;
   $sObject1->PBSI__Invoice_Date__c = $original_date;
 
+  // add fullfilment info based on where the product is ordered to
+  // Field Name = Fulfilment assignment
+  // If Country = Australia, then Fulfilment assignment = 14D, VIC
+  // If Country = USA, then Fulfillment assignment -= UTI, TX, USA
+
+  switch($order->delivery_country) {
+    // australia
+    case 36:
+      $sObject1->Fulfilment_Assignment__c = '14D, VIC';
+    break;
+    // united states
+    case 840:
+      $sObject1->Fulfilment_Assignment__c = 'UTI, TX, USA';
+    break;
+  }
+
   // new method of tellign ascent about a discount, lodge them as a negative misc charge (crap)
   $sObject1->PBSI__Misc_Charges__c = uc_ascent_salesforce_total_lineitem_type($order, "coupon");
 
