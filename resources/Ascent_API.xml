@@ -473,7 +473,7 @@
  <service name="Ascent_APIService">
   <documentation></documentation>
   <port binding="tns:Ascent_APIBinding" name="Ascent_API">
-   <soap:address location="https://na1-api.salesforce.com/services/Soap/class/PBSI/Ascent_API"/>
+   <soap:address location="https://na13-api.salesforce.com/services/Soap/class/PBSI/Ascent_API"/>
   </port>
  </service>
 </definitions>
