@@ -2,6 +2,7 @@ name = Integrates Ubercart with Salesforce/Ascent
 description = Provides conditional actions (CA) to queue updates to Salesforce/Ascent along with a cron runner to publish those queue entries to the Salesforce/Ascent API
 dependencies[] = "uc_order"
 package = Salesforce
+files[] = uc_ascent_salesforce.inc
 core = 6.x
 version = "6.x-0.2"
 

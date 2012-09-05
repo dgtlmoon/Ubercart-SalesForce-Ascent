@@ -173,8 +173,9 @@ function uc_ascent_salesforce_queue_item_info($qid) {
 
 function uc_ascent_salesforce_configuration_check() {
   
-  $sf = uc_ascent_connect(true);
-  
+  $sf = uc_ascent_connect(TRUE);
+  $output = "";
+
   if($sf) {
     $output .= "<p>SalesForce/Ascent connection <strong>established</strong></p>";
   } else {
@@ -196,7 +197,7 @@ function uc_ascent_salesforce_configuration_check() {
     $rows[] = $row;
   }
   
-  $output.=theme('table', array('Node Title', 'Model / SKU','Node Status' ,'SalesForce ID'), $rows);
+  $output .= theme('table', array('Node Title', 'Model / SKU','Node Status' ,'SalesForce ID'), $rows);
   
   $SF_table_value_lookups = array();
   $SF_table_value_lookups[]["c2g__codaGeneralLedgerAccount__c"] = "Accounts Payable";
@@ -204,8 +205,12 @@ function uc_ascent_salesforce_configuration_check() {
   $SF_table_value_lookups[]["c2g__CODADimension1__c"] = "Consumer Products";
   $SF_table_value_lookups[]["c2g__codaTaxCode__c"] = "FRE";
   $SF_table_value_lookups[]["c2g__codaTaxCode__c"] = "EXP";
-  
-  $output.="<h2>Check custom field values exist</h2>";
+
+  $SF_table_value_lookups[]["c2g__CODADimension2__c"] = "Australasia";
+  $SF_table_value_lookups[]["c2g__CODADimension2__c"] = "North America";
+  $SF_table_value_lookups[]["c2g__CODADimension2__c"] = "United Kingdom/Europe";
+
+  $output .= "<h2>Check custom field values exist</h2>";
   $rows = array();
   foreach($SF_table_value_lookups as $lookup) {
     foreach($lookup as $field => $value) {

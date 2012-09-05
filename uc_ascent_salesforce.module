@@ -217,6 +217,20 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
         // this can be used to prime many records that arent just for salesorders
         // so we just take the name details first
         $info = unserialize($row['extra_data']);
+        // theres a custom field value that needs to be set according to country
+        switch($order->billing_country ? $order->billing_country : $info['country']) {
+          case 36:
+          case 124:
+            $country = "Australasia";
+          break;
+          // UK will be United Kingdom/Europe
+          case 840:
+            $country = "North America";
+          default:
+            $country = FALSE;
+          break;
+        }
+
         if ($result = _uc_ascent_salesforce_account_upsert_contact($sf, $info['billingFirstName']
           , $info['billingLastName']
           , $info['deliveryFirstName']
@@ -225,7 +239,8 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
           , $info['billingEmail']
           , $info['description']
           , $order->billing_phone
-          , $order->delivery_phone)
+          , $order->delivery_phone
+          , $country)
         ) {
           $info = $info + $result;
           // record the status and set the flag as 1 = processed

@@ -287,6 +287,7 @@ function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $ord
  *
  * delivery details are Contact
  * billing details are Account
+ * $country is really just used for 'Dimension 2' custom field
  *
  * @return the accountID && contactID of this person in SF
  */
@@ -294,7 +295,7 @@ function _uc_ascent_salesforce_account_upsert_contact($sf, $billingFirstName, $b
                                                       $deliveryFirstName, $deliveryLastName,
                                                       $deliveryEmail, $billingEmail,
                                                       $description = "Added from website",
-                                                      $billingPhone = "", $deliveryPhone = "") {
+                                                      $billingPhone = "", $deliveryPhone = "", $country) {
 
   // check for a Contact that exists with this delivery
 
@@ -325,12 +326,14 @@ function _uc_ascent_salesforce_account_upsert_contact($sf, $billingFirstName, $b
   // if no contact was matched
   // create an Account then the Contact with the new accountID to link it
   if ($result->size == 0) {
+    $dimension2_id = _uc_ascent_query_table($sf, "c2g__CODADimension2__c", $country);
 
     // create the Account for this
     $record = array(
       'Type' => 'Customer',
       'Description' => $description,
       'Phone' => $billingPhone,
+      'c2g__CODADimension2__c' => $dimension2_id,
       'Name' => ucfirst(strtolower($billingFirstName)) . ' ' . ucfirst(strtolower($billingLastName)),
     );
     try {
