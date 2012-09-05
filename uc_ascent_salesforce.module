@@ -248,7 +248,6 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
           $info = $info + $result;
           // record the status and set the flag as 1 = processed
           db_query("UPDATE {uc_sf_queue} SET extra_data = '%s', q_status=1 WHERE qid='%d'", serialize($info), $row['qid']);
-
         }
         else {
           uc_ascent_report_error($sf, "Processing {$row['queue_function']} for Queue entry {$row['qid']}", "Failed to add account");
@@ -257,6 +256,13 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
 
       case 'SALESORDER_ENTER':
         $id = $row['order_id'];
+        $sf_id = unserialize(db_result(db_query("SELECT extra_data FROM uc_sf_queue WHERE order_id = %d AND queue_function = 'ACCOUNT_UPSERT' ", $id)));
+        if (!$sf_id['contactId'] || !$sf_id['accountId'] ) {
+          uc_ascent_report_error($sf, 'SALESORDER_ENTER tried to run but previous account upsert not complete '.$id, "salesorder_enter problem for order id $id");
+          break;
+        }
+
+        // make sure one doesnt already exist for this order_id
         if ($result = $sf->queryAll("Select PBSI__Customer__c from PBSI__PBSI_Sales_Order__c where PBSI__Customer_Purchase_Order__c = '$id'")) {
           if (count($result->records) != 0) {
             uc_ascent_report_error($sf, 'Query SalesForce table if it already exists '.$id, "already exists! order id $id");
@@ -265,7 +271,7 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
             break;
           }
         }
-        // skip this entirely if theres an order_id for this already in the system
+
         if ($row['order_id'] > 0) {
           $id = $row['order_id'];
           if ($result = $sf->queryAll("Select AccountId from Opportunity where PBSI__Customer_PO__c = '{$id}'")) {
