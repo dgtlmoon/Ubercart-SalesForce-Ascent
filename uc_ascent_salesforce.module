@@ -203,9 +203,11 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
 
   while ($row = db_fetch_array($db_result)) {
     // temp fix, skip things from the contact form
-    if(stristr($row['extra_data'],"Added from contact form")) {
+    if(stristr($row['extra_data'],"Added from")) {
       continue;
     }
+
+
     $order = uc_order_load($row['order_id']);
     $time_start = time();
     $request = "";
@@ -253,6 +255,18 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
         break;
 
       case 'SALESORDER_ENTER':
+
+        // skip this entirely if theres an order_id for this already in the system
+        if ($row['order_id'] > 0) {
+          $id = $row['order_id'];
+          if ($result = $sf->queryAll("Select AccountId from Opportunity where PBSI__Customer_PO__c = '{$id}'")) {
+            if (count($result->records) != 0) {
+              uc_ascent_report_error($sf, 'Query SalesForce table if it already exists', "already exists!");
+              continue;
+            }
+          }
+        }
+
         // grab the SF contact ID from any previous update to this
         $sf_id = unserialize(db_result(db_query("SELECT extra_data FROM uc_sf_queue WHERE order_id = %d AND queue_function = 'ACCOUNT_UPSERT' ", $order->order_id)));
         if ($sf_id) {

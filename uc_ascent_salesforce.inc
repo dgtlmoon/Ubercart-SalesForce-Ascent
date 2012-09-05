@@ -116,7 +116,6 @@ function _uc_ascent_salesforce_salesorder_update_aux_fields($sf, $soID, $order) 
   }
 
   return FALSE;
-
 }
 
 

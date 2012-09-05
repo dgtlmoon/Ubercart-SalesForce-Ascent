@@ -107,11 +107,13 @@ function uc_ascent_salesforce_queue_info() {
   ), array (
     'data' => t('Processed Time'), 'field' => 'recent_request_time' 
   ), array (
-    'data' => t(''),  
-  ) 
+    'data' => t('Type'),
+  ), array (
+    'data' => t(''),
+   )
   );
   
-  $result = db_query('SELECT * FROM {uc_sf_queue} order by order_id DESC limit 0,1000');
+  $result = db_query('SELECT * FROM {uc_sf_queue} order by order_id desc  limit 0,1000');
   $rows = array ();
   while ($queue_item = db_fetch_object($result)) {
     $rows [] = array (
@@ -119,7 +121,9 @@ function uc_ascent_salesforce_queue_info() {
       check_plain($queue_item->queue_function), 
       l($queue_item->order_id, 'admin/store/orders/' . $queue_item->order_id), 
       ! $queue_item->q_status ? t('Waiting') : t('Complete'), 
-      $queue_item->request_recent_time, 
+      $queue_item->request_recent_time,
+      $queue_item->order_id > 0 ? 'Order' : 'Contact form',
+
       l('view transaction','admin/store/settings/uc_salesforce/queue/'.$queue_item->qid)
     );
   }
