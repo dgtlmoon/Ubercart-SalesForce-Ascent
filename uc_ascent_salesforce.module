@@ -135,9 +135,9 @@ function uc_ascent_salesforce_cron() {
   }
 }
 
-function uc_ascent_connect($skip_cron_check = FALSE) {
+function uc_ascent_connect() {
   // skip or not
-  if (variable_get('uc_ascent_salesforce_run_cron', FALSE) == FALSE && $skip_cron_check == FALSE) {
+  if (variable_get('uc_ascent_salesforce_run_cron', FALSE) == FALSE) {
     watchdog('salesforceascent', t('Cron run skipped because we werent enabled to run.'));
     return FALSE;
   }
@@ -202,6 +202,10 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
   }
 
   while ($row = db_fetch_array($db_result)) {
+    // temp fix, skip things from the contact form
+    if(stristr($row['extra_data'],"Added from contact form")) {
+      continue;
+    }
     $order = uc_order_load($row['order_id']);
     $time_start = time();
     $request = "";
@@ -220,8 +224,8 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
           , $info['deliveryEmail']
           , $info['billingEmail']
           , $info['description']
-          , $info['billingPhone']
-          , $info['deliveryPhone'])
+          , $order->billing_phone
+          , $order->delivery_phone)
         ) {
           $info = $info + $result;
           // record the status and set the flag as 1 = processed
