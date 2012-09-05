@@ -129,10 +129,10 @@ function uc_ascent_salesforce_ca_action_upsert_sales_order($order = FALSE) {
 
 function uc_ascent_salesforce_cron() {
 
-  $sf = uc_ascent_connect();
-
-  uc_ascent_salesforce_process_jobs($sf);
-  $sf->logout();
+  if ($sf = uc_ascent_connect() ) {
+    uc_ascent_salesforce_process_jobs($sf);
+    $sf->logout();
+  }
 }
 
 function uc_ascent_connect($skip_cron_check = FALSE) {
@@ -142,9 +142,10 @@ function uc_ascent_connect($skip_cron_check = FALSE) {
     return FALSE;
   }
 
-  include_once (drupal_get_path('module', 'uc_ascent_salesforce') . '/resources/salesforce/soapclient/SforceBaseClient.php');
-  include_once (drupal_get_path('module', 'uc_ascent_salesforce') . '/resources/salesforce/soapclient/SforceEnterpriseClient.php');
-  include_once (drupal_get_path('module', 'uc_ascent_salesforce') . '/uc_ascent_salesforce.inc');
+  $path = drupal_get_path('module', 'uc_ascent_salesforce');
+  include_once ($path . '/resources/salesforce/soapclient/SforceBaseClient.php');
+  include_once ($path . '/resources/salesforce/soapclient/SforceEnterpriseClient.php');
+  include_once ($path . '/uc_ascent_salesforce.inc');
 
   ini_set("soap.wsdl_cache_enabled", 0); //ensure caching is off, we dont call it enough to worry  
 
@@ -189,6 +190,8 @@ function uc_ascent_record_queue($this_qid, $request, $response, $result) {
  */
 function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
   global $qid; // handy for logging
+
+
   // run each order
   // if a parent is specified use that, else just process as usual
   if ($parent) {
