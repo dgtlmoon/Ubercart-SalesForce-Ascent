@@ -228,6 +228,7 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
           // UK will be United Kingdom/Europe
           case 840:
             $country = "North America";
+          break;
           default:
             $country = FALSE;
           break;
