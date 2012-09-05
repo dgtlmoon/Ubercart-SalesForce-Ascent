@@ -260,6 +260,8 @@ function uc_ascent_salesforce_process_jobs($sf, $parent = 0) {
         if ($result = $sf->queryAll("Select PBSI__Customer__c from PBSI__PBSI_Sales_Order__c where PBSI__Customer_Purchase_Order__c = '$id'")) {
           if (count($result->records) != 0) {
             uc_ascent_report_error($sf, 'Query SalesForce table if it already exists '.$id, "already exists! order id $id");
+            // mark it as complete
+            db_query("UPDATE {uc_sf_queue} SET q_status=1, sf_id = '%s' WHERE qid= %d ", $result, $row['qid']);
             break;
           }
         }
