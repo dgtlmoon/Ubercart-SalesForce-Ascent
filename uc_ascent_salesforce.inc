@@ -222,7 +222,7 @@ function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $ord
   $sObject1->c2g__CODASalesTaxStatus__c = 'Exempt from Qualifying Products';
   $sObject1->c2g__CODATaxCalculationMethod__c = 'Gross';
   $sObject1->c2g__CODAECCountryCode__c = 'GB';
-
+  $sObject1->Sub_Type__c = 'Consumer Direct:Online';
 
   switch ($order->currency) {
     case 'AUD':
