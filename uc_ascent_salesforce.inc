@@ -237,6 +237,10 @@ function _uc_ascent_salesforce_set_account_aux($sf, $accountId, $contactId, $ord
       //$sObject1->c2g__CODAOutputVATCode__c = $lookups['EXP'];
       $sObject1->CurrencyIsoCode = 'USD';
       break;
+    case 'GBP':
+      $sObject1->CurrencyIsoCode = 'GBP';
+      break;
+
   }
 
   try {
